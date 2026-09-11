@@ -2,21 +2,27 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:3001/api';
 
+// Interfaz exportada para HU14
 export interface Tarea {
   id?: number;
   titulo: string;
   descripcion: string;
-  duracionEstimada: number;
+  duracion_estimada_min: number;
+  creado_en?: string;
 }
 
+// Interfaz exportada para HU15
 export interface PreTest {
   id?: number;
-  nombreParticipante: string;
+  nombre_participante: string;
   edad: number;
-  experienciaTecnologica: string;
+  experiencia_tecnologica: string;
   observaciones: string;
+  creado_en?: string;
 }
 
-export const crearTarea = (data: Tarea) => axios.post(`${API_URL}/tareas`, data);
-export const obtenerTareas = () => axios.get(`${API_URL}/tareas`);
-export const crearPreTest = (data: PreTest) => axios.post(`${API_URL}/pretest`, data);
+// Servicios de peticiones
+export const getTareas = () => axios.get<Tarea[]>(`${API_URL}/tareas`);
+export const createTarea = (tarea: Omit<Tarea, 'id' | 'creado_en'>) => axios.post<Tarea>(`${API_URL}/tareas`, tarea);
+
+export const createPreTest = (pretest: Omit<PreTest, 'id' | 'creado_en'>) => axios.post<PreTest>(`${API_URL}/pretests`, pretest);
