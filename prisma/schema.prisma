@@ -1,0 +1,304 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS DEL DOMINIO (MVP GESLAB)
+// ==========================================
+
+enum NombreRol {
+  ADMINISTRADOR
+  DOCENTE
+  ESTUDIANTE
+  ENCARGADO
+
+  @@map("nombre_rol")
+}
+
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+
+  @@map("dia_semana")
+}
+
+enum EstadoPractica {
+  BORRADOR
+  EN_REVISION
+  RECHAZADA
+  APROBADA
+  EN_EJECUCION
+  FINALIZADA
+  CERRADA
+
+  @@map("estado_practica")
+}
+
+enum TipoInstrumento {
+  GUIA_OBSERVACION
+  CUESTIONARIO_PRE_TEST
+  BANCO_TAREAS
+  CUESTIONARIO_POST_TEST
+
+  @@map("tipo_instrumento")
+}
+
+enum TipoDocumento {
+  CONSENTIMIENTO_INFORMADO
+  PROTOCOLO_PRUEBA
+  GUIA_ACTIVIDAD
+  REPORTE_FINAL
+  EVIDENCIA
+  OTRO
+
+  @@map("tipo_documento")
+}
+
+enum ResultadoRevision {
+  APROBADA
+  RECHAZADA
+
+  @@map("resultado_revision")
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+
+  @@map("estado_reserva")
+}
+
+// ==========================================
+// MODELOS DEL MVP GESLAB
+// ==========================================
+
+model Rol {
+  id          Int       @id @default(autoincrement())
+  nombre      NombreRol @unique
+  descripcion String?   @db.VarChar(255)
+  creadoEn    DateTime  @default(now()) @map("creado_en")
+
+  usuarios Usuario[]
+
+  @@map("roles")
+}
+
+model Usuario {
+  id                  Int       @id @default(autoincrement())
+  rolId               Int       @map("rol_id")
+  nombres             String    @db.VarChar(100)
+  apellidos           String    @db.VarChar(100)
+  correoInstitucional String    @unique @map("correo_institucional") @db.VarChar(150)
+  contrasenaHash      String    @map("contrasena_hash") @db.VarChar(255)
+  activo              Boolean   @default(true)
+  creadoEn            DateTime  @default(now()) @map("creado_en")
+  actualizadoEn       DateTime  @updatedAt @map("actualizado_en")
+
+  rol Rol @relation(fields: [rolId], references: [id], onDelete: Restrict)
+
+  practicasCreadas  Practica[]     @relation("EstudiantePracticas")
+  practicasDocente  Practica[]     @relation("DocentePracticas")
+  revisiones        Revision[]
+  documentosSubidos Documento[]
+  reservas          Reserva[]      @relation("SolicitanteReservas")
+  reservasRevisadas Reserva[]      @relation("RevisorReservas")
+  notificaciones    Notificacion[]
+
+  @@index([correoInstitucional])
+  @@index([rolId, activo])
+  @@map("usuarios")
+}
+
+model Laboratorio {
+  id            Int       @id @default(autoincrement())
+  nombre        String    @db.VarChar(100)
+  ubicacion     String    @db.VarChar(150)
+  capacidad     Int       @default(1)
+  descripcion   String?   @db.Text
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now()) @map("creado_en")
+  actualizadoEn DateTime  @updatedAt @map("actualizado_en")
+
+  horarios Horario[]
+  reservas Reserva[]
+
+  @@map("laboratorios")
+}
+
+model Horario {
+  id            Int       @id @default(autoincrement())
+  laboratorioId Int       @map("laboratorio_id")
+  diaSemana     DiaSemana @map("dia_semana")
+  horaInicio    DateTime  @map("hora_inicio") @db.Time
+  horaFin       DateTime  @map("hora_fin") @db.Time
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now()) @map("creado_en")
+
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id], onDelete: Restrict)
+  reservas    Reserva[]
+
+  @@unique([laboratorioId, diaSemana, horaInicio, horaFin])
+  @@map("horarios")
+}
+
+model Practica {
+  id            Int            @id @default(autoincrement())
+  estudianteId  Int            @map("estudiante_id")
+  docenteId     Int?           @map("docente_id")
+  titulo        String         @db.VarChar(200)
+  descripcion   String         @db.Text
+  objetivo      String         @db.Text
+  estado        EstadoPractica @default(BORRADOR)
+  creadoEn      DateTime       @default(now()) @map("creado_en")
+  actualizadoEn DateTime       @updatedAt @map("actualizado_en")
+  eliminadoEn   DateTime?      @map("eliminado_en")
+
+  estudiante Usuario  @relation("EstudiantePracticas", fields: [estudianteId], references: [id], onDelete: Restrict)
+  docente    Usuario? @relation("DocentePracticas", fields: [docenteId], references: [id], onDelete: Restrict)
+
+  instrumentos  Instrumento[]
+  participantes Participante[]
+  documentos    Documento[]
+  revisiones    Revision[]
+  reservas      Reserva[]
+
+  @@index([estudianteId, estado])
+  @@index([docenteId, estado])
+  @@map("practicas")
+}
+
+model Instrumento {
+  id            Int             @id @default(autoincrement())
+  practicaId    Int             @map("practica_id")
+  tipo          TipoInstrumento
+  nombre        String          @db.VarChar(150)
+  instrucciones String?         @db.Text
+  contenido     Json?
+  creadoEn      DateTime        @default(now()) @map("creado_en")
+  actualizadoEn DateTime        @updatedAt @map("actualizado_en")
+
+  practica Practica @relation(fields: [practicaId], references: [id], onDelete: Cascade)
+
+  @@index([practicaId, tipo])
+  @@map("instrumentos")
+}
+
+model Participante {
+  id                    Int      @id @default(autoincrement())
+  practicaId            Int      @map("practica_id")
+  codigoAnonimo         String   @map("codigo_anonimo") @db.VarChar(50)
+  nombres               String   @db.VarChar(100)
+  apellidos             String   @db.VarChar(100)
+  edad                  Int?
+  genero                String?  @db.VarChar(30)
+  ocupacion             String?  @db.VarChar(100)
+  experienciaPrevia     String?  @map("experiencia_previa") @db.Text
+  consentimientoFirmado Boolean  @default(false) @map("consentimiento_firmado")
+  creadoEn              DateTime @default(now()) @map("creado_en")
+
+  practica Practica @relation(fields: [practicaId], references: [id], onDelete: Cascade)
+
+  @@unique([practicaId, codigoAnonimo])
+  @@map("participantes")
+}
+
+model Documento {
+  id                   Int           @id @default(autoincrement())
+  practicaId           Int           @map("practica_id")
+  subidoPorUsuarioId   Int           @map("subido_por_usuario_id")
+  tipo                 TipoDocumento
+  nombreOriginal       String        @map("nombre_original") @db.VarChar(255)
+  nombreAlmacenamiento String        @map("nombre_almacenamiento") @db.VarChar(255)
+  ruta                 String        @db.VarChar(500)
+  tipoMime             String        @map("tipo_mime") @db.VarChar(100)
+  tamanoBytes          Int           @map("tamano_bytes")
+  creadoEn             DateTime      @default(now()) @map("creado_en")
+
+  practica  Practica @relation(fields: [practicaId], references: [id], onDelete: Cascade)
+  subidoPor Usuario  @relation(fields: [subidoPorUsuarioId], references: [id], onDelete: Restrict)
+
+  @@index([practicaId, tipo])
+  @@map("documentos")
+}
+
+model Revision {
+  id                   Int               @id @default(autoincrement())
+  practicaId           Int               @map("practica_id")
+  docenteId            Int               @map("docente_id")
+  resultado            ResultadoRevision
+  comentariosGenerales String?           @map("comentarios_generales") @db.Text
+  creadoEn             DateTime          @default(now()) @map("creado_en")
+
+  practica      Practica      @relation(fields: [practicaId], references: [id], onDelete: Restrict)
+  docente       Usuario       @relation(fields: [docenteId], references: [id], onDelete: Restrict)
+  observaciones Observacion[]
+
+  @@index([practicaId, creadoEn])
+  @@map("revisiones")
+}
+
+model Observacion {
+  id         Int      @id @default(autoincrement())
+  revisionId Int      @map("revision_id")
+  seccion    String   @db.VarChar(50)
+  detalle    String   @db.Text
+  resuelta   Boolean  @default(false)
+  creadoEn   DateTime @default(now()) @map("creado_en")
+
+  revision Revision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@index([revisionId, resuelta])
+  @@map("observaciones")
+}
+
+model Reserva {
+  id                       Int           @id @default(autoincrement())
+  practicaId               Int           @map("practica_id")
+  laboratorioId            Int           @map("laboratorio_id")
+  horarioId                Int           @map("horario_id")
+  solicitanteId            Int           @map("solicitante_id")
+  revisorId                Int?          @map("revisor_id")
+  fechaReserva             DateTime      @map("fecha_reserva") @db.Date
+  estado                   EstadoReserva @default(PENDIENTE)
+  motivoRechazoCancelacion String?       @map("motivo_rechazo_cancelacion") @db.Text
+  creadoEn                 DateTime      @default(now()) @map("creado_en")
+  actualizadoEn            DateTime      @updatedAt @map("actualizado_en")
+
+  practica    Practica    @relation(fields: [practicaId], references: [id], onDelete: Restrict)
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id], onDelete: Restrict)
+  horario     Horario     @relation(fields: [horarioId], references: [id], onDelete: Restrict)
+  solicitante Usuario     @relation("SolicitanteReservas", fields: [solicitanteId], references: [id], onDelete: Restrict)
+  revisor     Usuario?    @relation("RevisorReservas", fields: [revisorId], references: [id], onDelete: Restrict)
+
+  @@index([laboratorioId, fechaReserva, estado])
+  @@index([solicitanteId, estado])
+  @@map("reservas")
+}
+
+model Notificacion {
+  id                Int      @id @default(autoincrement())
+  usuarioId         Int      @map("usuario_id")
+  titulo            String   @db.VarChar(150)
+  mensaje           String   @db.Text
+  tipo              String   @db.VarChar(50)
+  leida             Boolean  @default(false)
+  referenciaEntidad String?  @map("referencia_entidad") @db.VarChar(50)
+  referenciaId      Int?     @map("referencia_id")
+  creadoEn          DateTime @default(now()) @map("creado_en")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, leida])
+  @@map("notificaciones")
+}
