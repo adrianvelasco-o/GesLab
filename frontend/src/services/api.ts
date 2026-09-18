@@ -21,14 +21,14 @@ export interface PreTest {
   creado_en?: string;
 }
 
-// Servicios de peticiones
+// Servicios para HU14 (Tareas)
 export const getTareas = () => axios.get<Tarea[]>(`${API_URL}/tareas`);
 export const createTarea = (tarea: Omit<Tarea, 'id' | 'creado_en'>) => axios.post<Tarea>(`${API_URL}/tareas`, tarea);
+export const updateTarea = (id: number, tarea: Omit<Tarea, 'id' | 'creado_en'>) => axios.put<Tarea>(`${API_URL}/tareas/${id}`, tarea);
+export const deleteTarea = (id: number) => axios.delete(`${API_URL}/tareas/${id}`);
 
+// Servicios para HU15 (PreTest)
+export const getPreTests = () => axios.get<PreTest[]>(`${API_URL}/pretests`);
 export const createPreTest = (pretest: Omit<PreTest, 'id' | 'creado_en'>) => axios.post<PreTest>(`${API_URL}/pretests`, pretest);
-
-export const updateTarea = (id: number, tarea: Omit<Tarea, 'id' | 'creado_en'>) => 
-  axios.put<Tarea>(`${API_URL}/tareas/${id}`, tarea);
-
-export const deleteTarea = (id: number) => 
-  axios.delete(`${API_URL}/tareas/${id}`);
+export const updatePreTest = (id: number, pretest: Omit<PreTest, 'id' | 'creado_en'>) => axios.put<PreTest>(`${API_URL}/pretests/${id}`, pretest);
+export const deletePreTest = (id: number) => axios.delete(`${API_URL}/pretests/${id}`);

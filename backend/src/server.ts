@@ -75,6 +75,19 @@ app.delete('/api/tareas/:id', async (req, res) => {
 });
 
 // --- [HU15] FORMULARIO PRE-TEST ---
+
+// Obtener todos los pre-tests
+app.get('/api/pretests', async (_req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM pretests ORDER BY id DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('--- ERROR PG (GET /api/pretests) ---', error);
+    res.status(500).json({ error: 'Error al obtener pre-tests' });
+  }
+});
+
+// Crear un pre-test
 app.post('/api/pretests', async (req, res) => {
   const { nombre_participante, edad, experiencia_tecnologica, observaciones } = req.body;
   if (!nombre_participante) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -88,6 +101,44 @@ app.post('/api/pretests', async (req, res) => {
   } catch (error) {
     console.error('--- ERROR PG (POST /api/pretests) ---', error);
     res.status(500).json({ error: 'Error al registrar pre-test' });
+  }
+});
+
+// Actualizar (Editar) un pre-test por ID
+app.put('/api/pretests/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nombre_participante, edad, experiencia_tecnologica, observaciones } = req.body;
+
+  if (!nombre_participante) return res.status(400).json({ error: 'El nombre es obligatorio' });
+
+  try {
+    const result = await pool.query(
+      'UPDATE pretests SET nombre_participante = $1, edad = $2, experiencia_tecnologica = $3, observaciones = $4 WHERE id = $5 RETURNING *',
+      [nombre_participante, edad, experiencia_tecnologica, observaciones, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Pre-test no encontrado' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('--- ERROR PG (PUT /api/pretests/:id) ---', error);
+    res.status(500).json({ error: 'Error al actualizar el pre-test' });
+  }
+});
+
+// Eliminar un pre-test por ID
+app.delete('/api/pretests/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM pretests WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Pre-test no encontrado' });
+    }
+    res.json({ message: 'Pre-test eliminado correctamente' });
+  } catch (error) {
+    console.error('--- ERROR PG (DELETE /api/pretests/:id) ---', error);
+    res.status(500).json({ error: 'Error al eliminar el pre-test' });
   }
 });
 
