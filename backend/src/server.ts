@@ -7,6 +7,8 @@ app.use(cors());
 app.use(express.json());
 
 // --- [HU14] GESTIÓN DE TAREAS ---
+
+// Obtener todas las tareas
 app.get('/api/tareas', async (_req, res) => {
   try {
     const result = await pool.query('SELECT * FROM tareas ORDER BY id DESC');
@@ -17,6 +19,7 @@ app.get('/api/tareas', async (_req, res) => {
   }
 });
 
+// Crear una nueva tarea
 app.post('/api/tareas', async (req, res) => {
   const { titulo, descripcion, duracion_estimada_min } = req.body;
   if (!titulo) return res.status(400).json({ error: 'El título es obligatorio' });
@@ -33,7 +36,45 @@ app.post('/api/tareas', async (req, res) => {
   }
 });
 
-// --- [HU15] FORMULARIO PRE-TEST (Ruta /api/pretests) ---
+// Actualizar (Editar) una tarea por ID
+app.put('/api/tareas/:id', async (req, res) => {
+  const { id } = req.params;
+  const { titulo, descripcion, duracion_estimada_min } = req.body;
+
+  if (!titulo) return res.status(400).json({ error: 'El título es obligatorio' });
+
+  try {
+    const result = await pool.query(
+      'UPDATE tareas SET titulo = $1, descripcion = $2, duracion_estimada_min = $3 WHERE id = $4 RETURNING *',
+      [titulo, descripcion, duracion_estimada_min, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('--- ERROR PG (PUT /api/tareas/:id) ---', error);
+    res.status(500).json({ error: 'Error al actualizar la tarea' });
+  }
+});
+
+// Eliminar una tarea por ID
+app.delete('/api/tareas/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM tareas WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.json({ message: 'Tarea eliminada correctamente' });
+  } catch (error) {
+    console.error('--- ERROR PG (DELETE /api/tareas/:id) ---', error);
+    res.status(500).json({ error: 'Error al eliminar la tarea' });
+  }
+});
+
+// --- [HU15] FORMULARIO PRE-TEST ---
 app.post('/api/pretests', async (req, res) => {
   const { nombre_participante, edad, experiencia_tecnologica, observaciones } = req.body;
   if (!nombre_participante) return res.status(400).json({ error: 'El nombre es obligatorio' });

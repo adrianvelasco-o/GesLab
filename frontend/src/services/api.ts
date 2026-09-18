@@ -26,3 +26,9 @@ export const getTareas = () => axios.get<Tarea[]>(`${API_URL}/tareas`);
 export const createTarea = (tarea: Omit<Tarea, 'id' | 'creado_en'>) => axios.post<Tarea>(`${API_URL}/tareas`, tarea);
 
 export const createPreTest = (pretest: Omit<PreTest, 'id' | 'creado_en'>) => axios.post<PreTest>(`${API_URL}/pretests`, pretest);
+
+export const updateTarea = (id: number, tarea: Omit<Tarea, 'id' | 'creado_en'>) => 
+  axios.put<Tarea>(`${API_URL}/tareas/${id}`, tarea);
+
+export const deleteTarea = (id: number) => 
+  axios.delete(`${API_URL}/tareas/${id}`);
