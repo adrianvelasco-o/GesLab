@@ -1,0 +1,10 @@
+
+npx prisma studio
+
+psql -h localhost -U postgres -d geslab_db
+
+
+\dt              -- Ver todas las tablas
+\d nombre_tabla  -- Ver estructura de una tabla
+SELECT * FROM nombre_tabla;
+
