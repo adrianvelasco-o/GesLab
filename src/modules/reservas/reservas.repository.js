@@ -87,3 +87,35 @@ export async function listarLaboratoriosConHorarios() {
     }
   });
 }
+
+//Obtiene las reservas ocupadas (PENDIENTE o APROBADA) para una fecha específica
+
+export async function obtenerReservasPorFecha(fechaReserva) {
+  return prisma.reserva.findMany({
+    where: {
+      fechaReserva: fechaReserva,
+      estado: {
+        in: ['PENDIENTE', 'APROBADA'] // Ocupan espacio en el laboratorio
+      }
+    },
+    select: {
+      id: true,
+      laboratorioId: true,
+      horarioId: true,
+      estado: true
+    }
+  });
+}
+
+export async function buscarReservaExistente({ laboratorioId, horarioId, fechaReserva }) {
+  return prisma.reserva.findFirst({
+    where: {
+      laboratorioId,
+      horarioId,
+      fechaReserva,
+      estado: {
+        in: ['PENDIENTE', 'APROBADA']
+      }
+    }
+  });
+}

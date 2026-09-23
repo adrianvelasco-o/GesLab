@@ -31,4 +31,7 @@ router.patch(
   reservasController.rechazar
 );
 
+// Endpoint CU12 / RF18
+router.get('/disponibilidad', reservasController.obtenerDisponibilidad);
+
 export default router;

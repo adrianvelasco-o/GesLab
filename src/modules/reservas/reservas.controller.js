@@ -61,3 +61,17 @@ export async function rechazar(req, res, next) {
     next(error);
   }
 }
+
+export async function obtenerDisponibilidad(req, res, next) {
+  try {
+    const { fecha } = req.query; // Petición: GET /api/reservas/disponibilidad?fecha=2026-09-25
+    const disponibilidad = await reservasService.consultarDisponibilidad(fecha);
+
+    return res.status(200).json({
+      success: true,
+      data: disponibilidad
+    });
+  } catch (error) {
+    next(error);
+  }
+}

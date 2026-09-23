@@ -108,7 +108,7 @@ export async function listarRevisiones(req, res, next) {
   }
 }
 
-//(HU 11)
+//(CU 11)
 export async function resolverObservacion(req, res, next) {
   try {
     const { id } = req.params;
