@@ -45,4 +45,7 @@ router.get('/:id/revisiones', practicasController.listarRevisiones);
 // Marcar Observación como resuelta (CU11 / HU14)
 router.patch('/observaciones/:id/resolver', practicasController.resolverObservacion);
 
+// Cierre formal de práctica (CU15 / RF15)
+router.patch('/:id/cerrar',permitirRoles('DOCENTE', 'ADMINISTRADOR'),practicasController.cerrarPractica);
+
 export default router;

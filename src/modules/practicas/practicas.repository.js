@@ -147,6 +147,22 @@ export async function crearRevisionConObservaciones({ practicaId, docenteId, res
   });
 }
 
+/**
+ * Cambia el estado de una práctica a CERRADA (Cierre formal docente)
+ */
+export async function cerrarPractica(id) {
+  return prisma.practica.update({
+    where: { id },
+    data: { estado: 'CERRADA' },
+    include: {
+      estudiante: {
+        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
+      },
+      documentos: true
+    }
+  });
+}
+
 export async function listarRevisionesPorPractica(practicaId) {
   return prisma.revision.findMany({
     where: { practicaId },

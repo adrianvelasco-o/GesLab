@@ -126,3 +126,19 @@ export async function resolverObservacion(req, res, next) {
     next(error);
   }
 }
+
+//Cierre formal de practica  (CU15 / RF15)
+export async function cerrarPractica(req, res, next) {
+  try {
+    const { id } = req.params;
+    const practicaCerrada = await practicasService.cerrarPracticaFormalmente(id, req.usuario);
+
+    return res.status(200).json({
+      success: true,
+      mensaje: 'Práctica cerrada formalmente con éxito',
+      data: practicaCerrada
+    });
+  } catch (error) {
+    next(error);
+  }
+}

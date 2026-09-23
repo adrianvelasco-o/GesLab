@@ -179,3 +179,34 @@ export async function obtenerRevisionesDePractica(practicaId, usuario) {
   await obtenerPracticaDetalle(practicaId, usuario);
   return practicasRepository.listarRevisionesPorPractica(practicaId);
 }
+
+export async function cerrarPracticaFormalmente(practicaId, usuario) {
+  const practica = await practicasRepository.buscarPracticaPorId(Number(practicaId));
+
+  if (!practica) {
+    throw new AppError('La práctica solicitada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  // 1. Validar permisos: Solo Docentes (o Administradores) pueden cerrar prácticas
+  const esDocenteOAdmin = ['DOCENTE', 'ADMINISTRADOR'].includes(usuario.rolNombre);
+  if (!esDocenteOAdmin) {
+    throw new AppError('Solo un docente o administrador puede realizar el cierre formal de una práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  // 2. Validar que si es un docente, sea el docente asignado a la práctica (o admin)
+  if (usuario.rolNombre === 'DOCENTE' && practica.docenteId && practica.docenteId !== usuario.id) {
+    throw new AppError('Solo el docente asignado a esta práctica puede cerrarla formalmente', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  // 3. Validar estado válido para el cierre (normalmente FINALIZADA o EN_EJECUCION)
+  if (!['FINALIZADA', 'EN_EJECUCION', 'APROBADA'].includes(practica.estado)) {
+    throw new AppError(
+      `No se puede cerrar una práctica en estado ${practica.estado}. Debe haber finalizado su ejecución.`,
+      400,
+      CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA
+    );
+  }
+
+  // 4. Cambiar estado a CERRADA
+  return practicasRepository.cerrarPractica(Number(practicaId));
+}
