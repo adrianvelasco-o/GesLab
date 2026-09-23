@@ -159,3 +159,49 @@ export async function listarRevisionesPorPractica(practicaId) {
     orderBy: { creadoEn: 'desc' }
   });
 }
+
+// -------------------------------------------------------------
+// OBSERVACIONES Y VALIDACIONES
+// -------------------------------------------------------------
+
+/**
+ * Cuenta cuántas observaciones pendientes (resuelta = false) existen 
+ * en todas las revisiones asociadas a una práctica.
+ */
+export async function contarObservacionesPendientes(practicaId) {
+  return prisma.observacion.count({
+    where: {
+      revision: {
+        practicaId: practicaId
+      },
+      resuelta: false
+    }
+  });
+}
+
+/**
+ * Busca una observación individual por su ID, incluyendo la revisión y práctica
+ * para validar pertenencia y permisos en el servicio.
+ */
+export async function buscarObservacionPorId(id) {
+  return prisma.observacion.findUnique({
+    where: { id },
+    include: {
+      revision: {
+        select: {
+          practicaId: true
+        }
+      }
+    }
+  });
+}
+
+/**
+ * Actualiza el estado 'resuelta' de una observación.
+ */
+export async function actualizarEstadoObservacion(id, resuelta) {
+  return prisma.observacion.update({
+    where: { id },
+    data: { resuelta }
+  });
+}

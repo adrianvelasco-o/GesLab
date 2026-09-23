@@ -42,4 +42,7 @@ router.post(
 );
 router.get('/:id/revisiones', practicasController.listarRevisiones);
 
+// Marcar Observación como resuelta (CU11 / HU14)
+router.patch('/observaciones/:id/resolver', practicasController.resolverObservacion);
+
 export default router;

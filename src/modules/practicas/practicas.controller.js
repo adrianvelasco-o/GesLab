@@ -107,3 +107,22 @@ export async function listarRevisiones(req, res, next) {
     next(error);
   }
 }
+
+//(HU 11)
+export async function resolverObservacion(req, res, next) {
+  try {
+    const { id } = req.params;
+    const resultado = await practicasService.marcarObservacionComoResuelta(
+      Number(id), 
+      req.usuario
+    );
+
+    return res.status(200).json({
+      success: true,
+      mensaje: 'Observación marcada como resuelta exitosamente',
+      data: resultado
+    });
+  } catch (error) {
+    next(error);
+  }
+}

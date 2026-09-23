@@ -47,6 +47,19 @@ export async function enviarPracticaARevision(practicaId, usuario) {
     throw new AppError('La práctica ya fue enviada o no se encuentra en estado editable', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
+  // VALIDACIÓN HU CU11 / RF14:
+  // Si la práctica fue rechazada, validar que no queden observaciones pendientes (resuelta = false)
+  if (practica.estado === 'RECHAZADA') {
+    const pendientes = await practicasRepository.contarObservacionesPendientes(practicaId);
+    if (pendientes > 0) {
+      throw new AppError(
+        `No se puede reenviar a revisión. Quedan ${pendientes} observación(es) sin resolver.`,
+        400,
+        CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA // O un código como REQUISITO_NO_CUMPLIDO / OPERACION_INVALIDA
+      );
+    }
+  }
+
   return practicasRepository.actualizarPractica(practicaId, { estado: 'EN_REVISION' });
 }
 
@@ -144,6 +157,22 @@ export async function registrarRevisionDocente(practicaId, datos, usuario) {
     comentariosGenerales: datos.comentariosGenerales || null,
     observaciones: datos.observaciones || []
   });
+}
+//Marcar Observaciones Como resuelta
+export async function marcarObservacionComoResuelta(observacionId, usuario) {
+  const observacion = await practicasRepository.buscarObservacionPorId(observacionId);
+  if (!observacion) {
+    throw new AppError('La observación no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  // Verificar que la observación pertenezca a una práctica del estudiante
+  const practica = await practicasRepository.buscarPracticaPorId(observacion.practicaId);
+  const esDuenio = practica && (practica.estudianteId === usuario.id || usuario.rolNombre === 'ADMINISTRADOR');
+  if (!esDuenio) {
+    throw new AppError('No tienes permisos para modificar esta observación', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  return practicasRepository.actualizarEstadoObservacion(observacionId, true);
 }
 
 export async function obtenerRevisionesDePractica(practicaId, usuario) {
