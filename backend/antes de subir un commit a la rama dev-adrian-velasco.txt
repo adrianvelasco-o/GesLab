@@ -1,0 +1,15 @@
+antes de subir un commit a la rama de dev-adrian-velasco
+
+se debe correr el setalias
+git-adrian
+git branch
+git switch dev-adrian-velasco
+
+verificar si con git config list
+
+si aparece mi nombre se puede hacer el commit
+
+entonces se hace asi
+git-adrian
+git commit -m "Comemntaripo"
+git push origin dev-adrian-velasco
