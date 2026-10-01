@@ -108,6 +108,23 @@ export async function listarRevisiones(req, res, next) {
   }
 }
 
+export async function resolverObservacion(req, res, next) {
+  try {
+    const practicaId = parseInt(req.params.id, 10);
+    const observacionId = parseInt(req.params.observacionId, 10);
+    const resuelta = req.body?.resuelta !== undefined ? req.body.resuelta : true;
+    const observacionActualizada = await practicasService.resolverObservacion(
+      practicaId,
+      observacionId,
+      resuelta,
+      req.usuario
+    );
+    return responderExito(res, 200, 'Observación actualizada correctamente', observacionActualizada);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function finalizar(req, res, next) {
   try {
     const practicaId = parseInt(req.params.id, 10);
@@ -117,4 +134,5 @@ export async function finalizar(req, res, next) {
     next(error);
   }
 }
+
 

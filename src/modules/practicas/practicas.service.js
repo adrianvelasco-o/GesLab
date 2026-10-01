@@ -64,6 +64,19 @@ export async function enviarPracticaARevision(practicaId, usuario) {
     );
   }
 
+  // Validación de observaciones resueltas (CU11 / HU12 / RN04)
+  const tieneObservacionesPendientes = practica.revisiones?.some((rev) =>
+    rev.observaciones?.some((obs) => !obs.resuelta)
+  );
+
+  if (tieneObservacionesPendientes) {
+    throw new AppError(
+      'Todas las observaciones de revisiones previas deben estar marcadas como resueltas antes de reenviar la práctica a revisión',
+      400,
+      CODIGOS_ERROR.OBSERVACIONES_PENDIENTES
+    );
+  }
+
   const practicaActualizada = await practicasRepository.actualizarPractica(practicaId, { estado: 'EN_REVISION' });
 
   // Notificar al docente asignado si existe
@@ -219,5 +232,28 @@ export async function finalizarPractica(practicaId, datos, usuario) {
 
   const nuevoEstado = datos.estado || 'FINALIZADA';
   return practicasRepository.actualizarPractica(practicaId, { estado: nuevoEstado });
+}
+
+export async function resolverObservacion(practicaId, observacionId, resuelta, usuario) {
+  const practica = await practicasRepository.buscarPracticaPorId(practicaId);
+  if (!practica) {
+    throw new AppError('La práctica solicitada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR'].includes(usuario.rolNombre);
+  if (!esDuenio) {
+    throw new AppError('No tienes permisos para modificar las observaciones de esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  if (!['BORRADOR', 'RECHAZADA'].includes(practica.estado) && usuario.rolNombre !== 'ADMINISTRADOR') {
+    throw new AppError('Solo se pueden resolver observaciones de prácticas en estado RECHAZADA o BORRADOR', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
+  }
+
+  const observacion = await practicasRepository.buscarObservacionPorId(observacionId);
+  if (!observacion || observacion.revision?.practicaId !== practicaId) {
+    throw new AppError('La observación solicitada no existe en esta práctica', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  return practicasRepository.actualizarObservacion(observacionId, { resuelta });
 }
 

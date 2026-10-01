@@ -159,3 +159,21 @@ export async function listarRevisionesPorPractica(practicaId) {
     orderBy: { creadoEn: 'desc' }
   });
 }
+
+export async function buscarObservacionPorId(id) {
+  return prisma.observacion.findUnique({
+    where: { id },
+    include: {
+      revision: {
+        select: { id: true, practicaId: true }
+      }
+    }
+  });
+}
+
+export async function actualizarObservacion(id, datos) {
+  return prisma.observacion.update({
+    where: { id },
+    data: datos
+  });
+}

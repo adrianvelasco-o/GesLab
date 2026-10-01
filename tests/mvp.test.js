@@ -4,7 +4,8 @@ import {
   crearPracticaEsquema,
   crearInstrumentoEsquema,
   revisionDocenteEsquema,
-  finalizarPracticaEsquema
+  finalizarPracticaEsquema,
+  resolverObservacionEsquema
 } from '../src/modules/practicas/practicas.schema.js';
 import {
   cambiarRolEsquema,
@@ -86,6 +87,19 @@ describe('API GesLab', () => {
 
       const resultadoInvalido = finalizarPracticaEsquema.safeParse({ estado: 'INVALIDO' });
       expect(resultadoInvalido.success).toBe(false);
+    });
+
+    test('resolverObservacionEsquema debe validar booleano o valor por defecto', () => {
+      const resPorDefecto = resolverObservacionEsquema.safeParse({});
+      expect(resPorDefecto.success).toBe(true);
+      expect(resPorDefecto.data.resuelta).toBe(true);
+
+      const resExplicito = resolverObservacionEsquema.safeParse({ resuelta: false });
+      expect(resExplicito.success).toBe(true);
+      expect(resExplicito.data.resuelta).toBe(false);
+
+      const resInvalido = resolverObservacionEsquema.safeParse({ resuelta: 'si' });
+      expect(resInvalido.success).toBe(false);
     });
   });
 

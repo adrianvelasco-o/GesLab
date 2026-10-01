@@ -8,7 +8,8 @@ import {
   actualizarPracticaEsquema,
   crearInstrumentoEsquema,
   revisionDocenteEsquema,
-  finalizarPracticaEsquema
+  finalizarPracticaEsquema,
+  resolverObservacionEsquema
 } from './practicas.schema.js';
 
 const router = Router();
@@ -43,6 +44,13 @@ router.post(
   practicasController.registrarRevision
 );
 router.get('/:id/revisiones', practicasController.listarRevisiones);
+
+// Subsanación de Observaciones (CU11 / HU12)
+router.patch(
+  '/:id/observaciones/:observacionId/resolver',
+  validarEsquema(resolverObservacionEsquema, 'body'),
+  practicasController.resolverObservacion
+);
 
 export default router;
 

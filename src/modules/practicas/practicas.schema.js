@@ -65,3 +65,7 @@ export const finalizarPracticaEsquema = z.object({
   observacionesFinales: z.string().optional().nullable()
 });
 
+export const resolverObservacionEsquema = z.object({
+  resuelta: z.boolean().optional().default(true)
+}).default({});
+
