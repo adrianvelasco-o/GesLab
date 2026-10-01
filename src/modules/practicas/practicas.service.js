@@ -26,6 +26,11 @@ export async function actualizarPractica(practicaId, datos, usuario) {
     throw new AppError('No tienes permisos para modificar esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 
+  // Regla RN06: Inmutabilidad de práctica cerrada
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica se encuentra formalmente CERRADA y no admite modificaciones (RN06)', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
+  }
+
   // Solo se puede modificar en BORRADOR o RECHAZADA
   if (!['BORRADOR', 'RECHAZADA'].includes(practica.estado) && usuario.rolNombre !== 'ADMINISTRADOR') {
     throw new AppError('Solo se pueden modificar prácticas en estado BORRADOR o RECHAZADA', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
@@ -138,6 +143,10 @@ export async function agregarInstrumento(practicaId, datos, usuario) {
     throw new AppError('No tienes permisos para agregar instrumentos a esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica se encuentra formalmente CERRADA y no admite modificaciones (RN06)', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
+  }
+
   return practicasRepository.crearInstrumento({
     practicaId,
     tipo: datos.tipo,
@@ -162,6 +171,10 @@ export async function eliminarInstrumento(practicaId, instrumentoId, usuario) {
   const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR'].includes(usuario.rolNombre);
   if (!esDuenio) {
     throw new AppError('No tienes permisos para eliminar este instrumento', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica se encuentra formalmente CERRADA y no admite modificaciones (RN06)', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
   }
 
   return practicasRepository.eliminarInstrumento(instrumentoId);
@@ -220,6 +233,54 @@ export async function finalizarPractica(practicaId, datos, usuario) {
     throw new AppError('La práctica solicitada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
   }
 
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica ya se encuentra formalmente CERRADA y no admite más transiciones', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
+  }
+
+  const nuevoEstado = datos.estado || 'FINALIZADA';
+
+  if (nuevoEstado === 'CERRADA') {
+    // Regla CU15 / HU17: Cierre formal exclusivo del DOCENTE orientador o ADMINISTRADOR
+    const esDocenteTutor = (usuario.rolNombre === 'DOCENTE' && practica.docenteId === usuario.id) || usuario.rolNombre === 'ADMINISTRADOR';
+    if (!esDocenteTutor) {
+      throw new AppError('Solo el docente orientador asignado a la práctica puede formalizar su cierre definitivo', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+    }
+
+    // Debe encontrarse previamente en estado FINALIZADA
+    if (practica.estado !== 'FINALIZADA' && usuario.rolNombre !== 'ADMINISTRADOR') {
+      throw new AppError('La práctica debe estar en estado FINALIZADA para poder proceder con el cierre formal', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
+    }
+
+    // Regla RN32: Exigir reporte final o evidencia adjunta
+    const tieneReporteOEvidencia = Boolean(
+      practica.documentos &&
+      practica.documentos.some((doc) => ['REPORTE_FINAL', 'EVIDENCIA'].includes(doc.tipo))
+    );
+
+    if (!tieneReporteOEvidencia) {
+      throw new AppError(
+        'La práctica debe contar con al menos un documento de tipo REPORTE_FINAL o EVIDENCIA antes del cierre formal (RN32)',
+        400,
+        CODIGOS_ERROR.DOCUMENTACION_INCOMPLETA
+      );
+    }
+
+    const practicaCerrada = await practicasRepository.actualizarPractica(practicaId, { estado: 'CERRADA' });
+
+    // Notificar al estudiante del cierre exitoso
+    crearYEnviarNotificacion({
+      usuarioId: practica.estudianteId,
+      titulo: 'Práctica Cerrada Formalmente',
+      mensaje: `Tu práctica '${practica.titulo}' ha sido formalmente evaluada y cerrada por el docente orientador.`,
+      tipo: 'PRACTICA_APROBADA',
+      referenciaEntidad: 'PRACTICA',
+      referenciaId: practicaId
+    }).catch((err) => console.error('Error al notificar cierre de práctica:', err.message));
+
+    return practicaCerrada;
+  }
+
+  // Transición a FINALIZADA
   const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR', 'DOCENTE', 'ENCARGADO'].includes(usuario.rolNombre);
   if (!esDuenio) {
     throw new AppError('No tienes permisos para finalizar esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
@@ -230,8 +291,7 @@ export async function finalizarPractica(practicaId, datos, usuario) {
     throw new AppError('La práctica debe estar en estado APROBADA o EN_EJECUCION para poder ser finalizada', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
-  const nuevoEstado = datos.estado || 'FINALIZADA';
-  return practicasRepository.actualizarPractica(practicaId, { estado: nuevoEstado });
+  return practicasRepository.actualizarPractica(practicaId, { estado: 'FINALIZADA' });
 }
 
 export async function resolverObservacion(practicaId, observacionId, resuelta, usuario) {

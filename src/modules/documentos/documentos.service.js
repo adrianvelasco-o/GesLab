@@ -19,7 +19,12 @@ export async function registrarDocumentoPdf({ practicaId, tipo, archivo, usuario
     throw new AppError('La práctica especificada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
   }
 
-  // 2. Verificar permisos: El estudiante debe ser el dueño de la práctica (o admin)
+  // 2. Validar que la práctica no esté cerrada (RN06)
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('No se pueden adjuntar documentos a una práctica cerrada', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
+  }
+
+  // 3. Verificar permisos: El estudiante debe ser el dueño de la práctica (o admin)
   const puedeSubir =
     ['ADMINISTRADOR', 'ENCARGADO'].includes(usuario.rolNombre) ||
     practica.estudianteId === usuario.id;
