@@ -110,8 +110,63 @@ export async function rechazarReserva(reservaId, motivo, usuario) {
   return reservaRechazada;
 }
 
-export async function listarLaboratoriosDisponibles() {
-  return reservasRepository.listarLaboratoriosConHorarios();
+const DIAS_SEMANA_MAP = [
+  null,        // 0: Domingo (sin atención)
+  'LUNES',     // 1
+  'MARTES',    // 2
+  'MIERCOLES', // 3
+  'JUEVES',    // 4
+  'VIERNES',   // 5
+  'SABADO'     // 6
+];
+
+export async function listarLaboratoriosDisponibles(fecha = null) {
+  const laboratorios = await reservasRepository.listarLaboratoriosConHorarios();
+
+  if (!fecha) {
+    return laboratorios;
+  }
+
+  const [year, month, day] = fecha.split('-').map(Number);
+  const fechaObj = new Date(Date.UTC(year, month - 1, day));
+  if (isNaN(fechaObj.getTime())) {
+    throw new AppError('La fecha proporcionada es inválida', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
+  const diaSemana = DIAS_SEMANA_MAP[fechaObj.getUTCDay()];
+
+  // Si es un día no hábil sin atención (ej. domingo), no existen franjas configuradas
+  if (!diaSemana) {
+    return laboratorios.map((lab) => ({
+      ...lab,
+      horarios: []
+    }));
+  }
+
+  const reservasOcupadas = await reservasRepository.listarReservasPorFecha(fecha);
+
+  return laboratorios.map((lab) => {
+    // Filtrar franjas activas del día de la semana correspondiente a la fecha
+    const franjasDelDia = lab.horarios.filter((h) => h.diaSemana === diaSemana);
+
+    const horariosConEstado = franjasDelDia.map((horario) => {
+      const reservasEnFranja = reservasOcupadas.filter(
+        (r) => r.laboratorioId === lab.id && r.horarioId === horario.id
+      );
+      const estaOcupado = reservasEnFranja.length >= (lab.capacidad || 1);
+
+      return {
+        ...horario,
+        estado: estaOcupado ? 'OCUPADO' : 'DISPONIBLE',
+        disponible: !estaOcupado
+      };
+    });
+
+    return {
+      ...lab,
+      horarios: horariosConEstado
+    };
+  });
 }
 
 export async function crearNuevoLaboratorio(datos) {

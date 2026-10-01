@@ -53,3 +53,11 @@ export const crearHorarioEsquema = z.object({
     .string({ required_error: 'La hora de fin es obligatoria (formato HH:MM)' })
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'La hora de fin debe tener formato HH:MM (24 horas)')
 });
+
+export const consultarDisponibilidadEsquema = z.object({
+  fecha: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe tener formato AAAA-MM-DD')
+    .optional()
+});
+

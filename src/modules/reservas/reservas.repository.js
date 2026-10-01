@@ -107,3 +107,22 @@ export async function crearHorario(datos) {
   });
 }
 
+export async function listarReservasPorFecha(fecha) {
+  const [year, month, day] = fecha.split('-').map(Number);
+  const fechaInicio = new Date(Date.UTC(year, month - 1, day));
+  const fechaFin = new Date(Date.UTC(year, month - 1, day + 1));
+
+  return prisma.reserva.findMany({
+    where: {
+      fechaReserva: {
+        gte: fechaInicio,
+        lt: fechaFin
+      },
+      estado: {
+        in: ['PENDIENTE', 'APROBADA']
+      }
+    }
+  });
+}
+
+

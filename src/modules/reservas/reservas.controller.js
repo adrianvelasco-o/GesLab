@@ -22,10 +22,23 @@ export async function listar(req, res, next) {
   }
 }
 
-export async function listarLaboratorios(_req, res, next) {
+export async function listarLaboratorios(req, res, next) {
   try {
-    const laboratorios = await reservasService.listarLaboratoriosDisponibles();
-    return responderExito(res, 200, 'Laboratorios y horarios obtenidos correctamente', laboratorios);
+    const { fecha } = req.query;
+    const laboratorios = await reservasService.listarLaboratoriosDisponibles(fecha);
+
+    let mensaje = 'Laboratorios y horarios obtenidos correctamente';
+    if (fecha) {
+      const [year, month, day] = fecha.split('-').map(Number);
+      const fechaObj = new Date(Date.UTC(year, month - 1, day));
+      const esDiaNoHabil = fechaObj.getUTCDay() === 0;
+
+      mensaje = esDiaNoHabil
+        ? 'No existen franjas configuradas para ese día'
+        : 'Disponibilidad de laboratorios consultada correctamente';
+    }
+
+    return responderExito(res, 200, mensaje, laboratorios);
   } catch (error) {
     next(error);
   }

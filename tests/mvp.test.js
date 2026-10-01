@@ -13,7 +13,8 @@ import {
 } from '../src/modules/usuarios/usuarios.schema.js';
 import {
   crearLaboratorioEsquema,
-  crearHorarioEsquema
+  crearHorarioEsquema,
+  consultarDisponibilidadEsquema
 } from '../src/modules/reservas/reservas.schema.js';
 
 describe('API GesLab', () => {
@@ -141,5 +142,13 @@ describe('API GesLab', () => {
       };
       expect(crearHorarioEsquema.safeParse(horarioInvalido).success).toBe(false);
     });
+
+    test('consultarDisponibilidadEsquema debe validar fecha opcional en formato AAAA-MM-DD', () => {
+      expect(consultarDisponibilidadEsquema.safeParse({}).success).toBe(true);
+      expect(consultarDisponibilidadEsquema.safeParse({ fecha: '2026-10-15' }).success).toBe(true);
+      expect(consultarDisponibilidadEsquema.safeParse({ fecha: '15-10-2026' }).success).toBe(false);
+      expect(consultarDisponibilidadEsquema.safeParse({ fecha: 'invalida' }).success).toBe(false);
+    });
   });
 });
+

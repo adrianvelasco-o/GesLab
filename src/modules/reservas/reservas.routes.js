@@ -7,15 +7,20 @@ import {
   crearReservaEsquema,
   rechazarReservaEsquema,
   crearLaboratorioEsquema,
-  crearHorarioEsquema
+  crearHorarioEsquema,
+  consultarDisponibilidadEsquema
 } from './reservas.schema.js';
 
 const router = Router();
 
 router.use(autenticar);
 
-// Catálogo de laboratorios y horarios disponibles (CU12)
-router.get('/laboratorios', reservasController.listarLaboratorios);
+// Catálogo de laboratorios y horarios disponibles (CU12 / HU13)
+router.get(
+  '/laboratorios',
+  validarEsquema(consultarDisponibilidadEsquema, 'query'),
+  reservasController.listarLaboratorios
+);
 
 // Creación de laboratorios y franjas horarias (CU16 - Admin/Encargado)
 router.post(
