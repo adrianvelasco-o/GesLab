@@ -71,6 +71,7 @@ export async function buscarPracticaPorId(id) {
         select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
       },
       instrumentos: true,
+      participantes: true,
       documentos: true,
       reservas: true,
       revisiones: {
@@ -175,5 +176,45 @@ export async function actualizarObservacion(id, datos) {
   return prisma.observacion.update({
     where: { id },
     data: datos
+  });
+}
+
+// -------------------------------------------------------------
+// PARTICIPANTES DE PRUEBAS UX (CU05, CU08 / HU19)
+// -------------------------------------------------------------
+
+export async function crearParticipante(datos) {
+  return prisma.participante.create({
+    data: datos
+  });
+}
+
+export async function listarParticipantesPorPractica(practicaId) {
+  return prisma.participante.findMany({
+    where: { practicaId },
+    orderBy: { creadoEn: 'asc' }
+  });
+}
+
+export async function buscarParticipantePorId(id) {
+  return prisma.participante.findUnique({
+    where: { id }
+  });
+}
+
+export async function buscarParticipantePorCodigo(practicaId, codigoAnonimo) {
+  return prisma.participante.findUnique({
+    where: {
+      practicaId_codigoAnonimo: {
+        practicaId,
+        codigoAnonimo
+      }
+    }
+  });
+}
+
+export async function eliminarParticipante(id) {
+  return prisma.participante.delete({
+    where: { id }
   });
 }

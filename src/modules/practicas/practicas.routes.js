@@ -9,7 +9,8 @@ import {
   crearInstrumentoEsquema,
   revisionDocenteEsquema,
   finalizarPracticaEsquema,
-  resolverObservacionEsquema
+  resolverObservacionEsquema,
+  registrarParticipanteEsquema
 } from './practicas.schema.js';
 
 const router = Router();
@@ -51,6 +52,15 @@ router.patch(
   validarEsquema(resolverObservacionEsquema, 'body'),
   practicasController.resolverObservacion
 );
+
+// Gestión de Participantes de Pruebas UX (CU05, CU08 / HU19)
+router.post(
+  '/:id/participantes',
+  validarEsquema(registrarParticipanteEsquema, 'body'),
+  practicasController.crearParticipante
+);
+router.get('/:id/participantes', practicasController.listarParticipantes);
+router.delete('/:id/participantes/:participanteId', practicasController.eliminarParticipante);
 
 export default router;
 

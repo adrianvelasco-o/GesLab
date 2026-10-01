@@ -5,7 +5,8 @@ import {
   crearInstrumentoEsquema,
   revisionDocenteEsquema,
   finalizarPracticaEsquema,
-  resolverObservacionEsquema
+  resolverObservacionEsquema,
+  registrarParticipanteEsquema
 } from '../src/modules/practicas/practicas.schema.js';
 import {
   cambiarRolEsquema,
@@ -103,6 +104,29 @@ describe('API GesLab', () => {
 
       const resInvalido = resolverObservacionEsquema.safeParse({ resuelta: 'si' });
       expect(resInvalido.success).toBe(false);
+    });
+
+    test('registrarParticipanteEsquema debe validar participante correcto', () => {
+      const participanteValido = {
+        codigoAnonimo: 'P01',
+        nombres: 'Carlos',
+        apellidos: 'Gómez',
+        edad: 24,
+        genero: 'M',
+        ocupacion: 'Estudiante',
+        consentimientoFirmado: true
+      };
+      const res = registrarParticipanteEsquema.safeParse(participanteValido);
+      expect(res.success).toBe(true);
+      expect(res.data.consentimientoFirmado).toBe(true);
+    });
+
+    test('registrarParticipanteEsquema debe fallar si falta codigoAnonimo o nombres', () => {
+      const participanteInvalido = {
+        apellidos: 'Gómez'
+      };
+      const res = registrarParticipanteEsquema.safeParse(participanteInvalido);
+      expect(res.success).toBe(false);
     });
   });
 

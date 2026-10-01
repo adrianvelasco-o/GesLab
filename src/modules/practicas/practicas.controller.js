@@ -135,4 +135,39 @@ export async function finalizar(req, res, next) {
   }
 }
 
+// -------------------------------------------------------------
+// PARTICIPANTES DE PRUEBAS UX (CU05, CU08 / HU19)
+// -------------------------------------------------------------
+
+export async function crearParticipante(req, res, next) {
+  try {
+    const practicaId = parseInt(req.params.id, 10);
+    const participante = await practicasService.agregarParticipante(practicaId, req.body, req.usuario);
+    return responderExito(res, 201, 'Participante registrado exitosamente', participante);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listarParticipantes(req, res, next) {
+  try {
+    const practicaId = parseInt(req.params.id, 10);
+    const participantes = await practicasService.obtenerParticipantes(practicaId, req.usuario);
+    return responderExito(res, 200, 'Participantes obtenidos correctamente', participantes);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function eliminarParticipante(req, res, next) {
+  try {
+    const practicaId = parseInt(req.params.id, 10);
+    const participanteId = parseInt(req.params.participanteId, 10);
+    await practicasService.eliminarParticipante(practicaId, participanteId, req.usuario);
+    return responderExito(res, 200, 'Participante eliminado correctamente');
+  } catch (error) {
+    next(error);
+  }
+}
+
 

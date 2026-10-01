@@ -69,3 +69,26 @@ export const resolverObservacionEsquema = z.object({
   resuelta: z.boolean().optional().default(true)
 }).default({});
 
+export const registrarParticipanteEsquema = z.object({
+  codigoAnonimo: z
+    .string({ required_error: 'El código anónimo es obligatorio' })
+    .min(1, 'El código anónimo no puede estar vacío')
+    .max(50, 'El código anónimo no puede exceder 50 caracteres')
+    .trim(),
+  nombres: z
+    .string({ required_error: 'Los nombres son obligatorios' })
+    .min(2, 'Los nombres deben tener al menos 2 caracteres')
+    .max(100)
+    .trim(),
+  apellidos: z
+    .string({ required_error: 'Los apellidos son obligatorios' })
+    .min(2, 'Los apellidos deben tener al menos 2 caracteres')
+    .max(100)
+    .trim(),
+  edad: z.number().int().positive('La edad debe ser un número entero positivo').optional().nullable(),
+  genero: z.string().max(30).trim().optional().nullable(),
+  ocupacion: z.string().max(100).trim().optional().nullable(),
+  experienciaPrevia: z.string().trim().optional().nullable(),
+  consentimientoFirmado: z.boolean().optional().default(false)
+});
+

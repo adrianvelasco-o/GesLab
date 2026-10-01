@@ -317,3 +317,64 @@ export async function resolverObservacion(practicaId, observacionId, resuelta, u
   return practicasRepository.actualizarObservacion(observacionId, { resuelta });
 }
 
+// -------------------------------------------------------------
+// PARTICIPANTES DE PRUEBAS UX (CU05, CU08 / HU19)
+// -------------------------------------------------------------
+
+export async function agregarParticipante(practicaId, datos, usuario) {
+  const practica = await practicasRepository.buscarPracticaPorId(practicaId);
+  if (!practica) {
+    throw new AppError('La práctica especificada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR', 'ENCARGADO'].includes(usuario.rolNombre);
+  if (!esDuenio) {
+    throw new AppError('No tienes permisos para agregar participantes a esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica se encuentra formalmente CERRADA y no admite modificaciones (RN06)', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
+  }
+
+  const existente = await practicasRepository.buscarParticipantePorCodigo(practicaId, datos.codigoAnonimo);
+  if (existente) {
+    throw new AppError(`El código anónimo '${datos.codigoAnonimo}' ya está registrado en esta práctica`, 409, CODIGOS_ERROR.CONFLICTO_DUPLICADO);
+  }
+
+  return practicasRepository.crearParticipante({
+    practicaId,
+    codigoAnonimo: datos.codigoAnonimo,
+    nombres: datos.nombres,
+    apellidos: datos.apellidos,
+    edad: datos.edad !== undefined ? datos.edad : null,
+    genero: datos.genero || null,
+    ocupacion: datos.ocupacion || null,
+    experienciaPrevia: datos.experienciaPrevia || null,
+    consentimientoFirmado: Boolean(datos.consentimientoFirmado)
+  });
+}
+
+export async function obtenerParticipantes(practicaId, usuario) {
+  await obtenerPracticaDetalle(practicaId, usuario);
+  return practicasRepository.listarParticipantesPorPractica(practicaId);
+}
+
+export async function eliminarParticipante(practicaId, participanteId, usuario) {
+  const participante = await practicasRepository.buscarParticipantePorId(participanteId);
+  if (!participante || participante.practicaId !== practicaId) {
+    throw new AppError('El participante especificado no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  const practica = await practicasRepository.buscarPracticaPorId(practicaId);
+  const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR', 'ENCARGADO'].includes(usuario.rolNombre);
+  if (!esDuenio) {
+    throw new AppError('No tienes permisos para eliminar este participante', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  if (practica.estado === 'CERRADA') {
+    throw new AppError('La práctica se encuentra formalmente CERRADA y no admite modificaciones (RN06)', 400, CODIGOS_ERROR.PRACTICA_NO_EDITABLE);
+  }
+
+  return practicasRepository.eliminarParticipante(participanteId);
+}
+
