@@ -24,3 +24,19 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Notas, requerimientos y documentación de trabajo interno
+antes de subir un commit a la rama dev-adrian-velasco.txt
+bd.txt
+peticiones.txt
+prompt.txt
+HISTORIAS_DE_USUARIO.md
+matriz_historias_usuario_geslab.md
+*.xlsx
+
+.gradle/
+**/android/.gradle/
+**/android/app/build/
+build/
+
+*.hprof

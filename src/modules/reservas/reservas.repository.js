@@ -87,3 +87,23 @@ export async function listarLaboratoriosConHorarios() {
     }
   });
 }
+
+export async function buscarLaboratorioPorId(id) {
+  return prisma.laboratorio.findUnique({
+    where: { id },
+    include: { horarios: true }
+  });
+}
+
+export async function crearLaboratorio(datos) {
+  return prisma.laboratorio.create({
+    data: datos
+  });
+}
+
+export async function crearHorario(datos) {
+  return prisma.horario.create({
+    data: datos
+  });
+}
+

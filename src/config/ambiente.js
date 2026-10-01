@@ -21,6 +21,9 @@ export const CONFIG = Object.freeze({
   
   JWT_EXPIRACION: process.env.JWT_EXPIRACION || '8h',
   
+  DIRECTORIO_SUBIDAS: process.env.DIRECTORIO_SUBIDAS || './uploads',
+  TAMANO_MAXIMO_DOCUMENTO_MB: parseInt(process.env.TAMANO_MAXIMO_DOCUMENTO_MB || '20', 10),
+  
   CORS_ORIGEN: process.env.CORS_ORIGEN
     ? process.env.CORS_ORIGEN.split(',')
     : ['http://localhost:3000', 'http://localhost:5173'],

@@ -1,4 +1,5 @@
 import * as practicasRepository from './practicas.repository.js';
+import { crearYEnviarNotificacion } from '../notificaciones/notificaciones.service.js';
 import { AppError } from '../../errors/AppError.js';
 import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 
@@ -47,7 +48,37 @@ export async function enviarPracticaARevision(practicaId, usuario) {
     throw new AppError('La práctica ya fue enviada o no se encuentra en estado editable', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
-  return practicasRepository.actualizarPractica(practicaId, { estado: 'EN_REVISION' });
+  // Validación de Regla RN02 / CU09: Prerrequisitos de envío a revisión
+  if (!practica.docenteId) {
+    throw new AppError('Debe asignar un docente tutor a la práctica antes de enviarla a revisión', 400, CODIGOS_ERROR.DOCENTE_NO_ASIGNADO);
+  }
+
+  const tieneInstrumentos = Boolean(practica.instrumentos && practica.instrumentos.length > 0);
+  const tieneConsentimiento = Boolean(practica.documentos && practica.documentos.some((doc) => doc.tipo === 'CONSENTIMIENTO_INFORMADO'));
+
+  if (!tieneInstrumentos || !tieneConsentimiento) {
+    throw new AppError(
+      'La práctica debe contar con al menos un instrumento de evaluación y un documento de consentimiento informado adjunto antes de enviarse a revisión',
+      400,
+      CODIGOS_ERROR.DOCUMENTACION_INCOMPLETA
+    );
+  }
+
+  const practicaActualizada = await practicasRepository.actualizarPractica(practicaId, { estado: 'EN_REVISION' });
+
+  // Notificar al docente asignado si existe
+  if (practica.docenteId) {
+    crearYEnviarNotificacion({
+      usuarioId: practica.docenteId,
+      titulo: 'Nueva práctica para revisión',
+      mensaje: `El estudiante ha enviado una práctica para tu revisión.`,
+      tipo: 'PRACTICA_ENVIADA_REVISION',
+      referenciaEntidad: 'PRACTICA',
+      referenciaId: practicaId
+    }).catch((err) => console.error('Error al notificar docente:', err.message));
+  }
+
+  return practicaActualizada;
 }
 
 export async function obtenerPracticasUsuario(usuario) {
@@ -137,16 +168,56 @@ export async function registrarRevisionDocente(practicaId, datos, usuario) {
     throw new AppError('Solo se pueden evaluar prácticas que se encuentren en estado EN_REVISION', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
-  return practicasRepository.crearRevisionConObservaciones({
+  const revision = await practicasRepository.crearRevisionConObservaciones({
     practicaId,
     docenteId: usuario.id,
     resultado: datos.resultado,
     comentariosGenerales: datos.comentariosGenerales || null,
     observaciones: datos.observaciones || []
   });
+
+  // Notificar al estudiante creador de la práctica
+  const esAprobada = datos.resultado === 'APROBADA';
+  const tipoNotif = esAprobada ? 'PRACTICA_APROBADA' : 'PRACTICA_RECHAZADA';
+  const tituloNotif = esAprobada ? 'Práctica Aprobada' : 'Práctica Requiere Correcciones';
+  const mensajeNotif = esAprobada
+    ? `Tu práctica '${practica.titulo}' ha sido aprobada por el docente.`
+    : `Tu práctica '${practica.titulo}' requiere correcciones tras la revisión docente.`;
+
+  crearYEnviarNotificacion({
+    usuarioId: practica.estudianteId,
+    titulo: tituloNotif,
+    mensaje: mensajeNotif,
+    tipo: tipoNotif,
+    referenciaEntidad: 'PRACTICA',
+    referenciaId: practicaId
+  }).catch((err) => console.error('Error al notificar estudiante:', err.message));
+
+  return revision;
 }
 
 export async function obtenerRevisionesDePractica(practicaId, usuario) {
   await obtenerPracticaDetalle(practicaId, usuario);
   return practicasRepository.listarRevisionesPorPractica(practicaId);
 }
+
+export async function finalizarPractica(practicaId, datos, usuario) {
+  const practica = await practicasRepository.buscarPracticaPorId(practicaId);
+  if (!practica) {
+    throw new AppError('La práctica solicitada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  const esDuenio = practica.estudianteId === usuario.id || ['ADMINISTRADOR', 'DOCENTE', 'ENCARGADO'].includes(usuario.rolNombre);
+  if (!esDuenio) {
+    throw new AppError('No tienes permisos para finalizar esta práctica', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
+  }
+
+  const estadosValidos = ['APROBADA', 'EN_EJECUCION'];
+  if (!estadosValidos.includes(practica.estado) && usuario.rolNombre !== 'ADMINISTRADOR') {
+    throw new AppError('La práctica debe estar en estado APROBADA o EN_EJECUCION para poder ser finalizada', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
+  }
+
+  const nuevoEstado = datos.estado || 'FINALIZADA';
+  return practicasRepository.actualizarPractica(practicaId, { estado: nuevoEstado });
+}
+

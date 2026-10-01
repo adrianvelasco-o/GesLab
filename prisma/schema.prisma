@@ -79,6 +79,23 @@ enum EstadoReserva {
   @@map("estado_reserva")
 }
 
+enum TipoNotificacion {
+  PRACTICA_ENVIADA_REVISION
+  PRACTICA_APROBADA
+  PRACTICA_RECHAZADA
+  RESERVA_APROBADA
+  RESERVA_RECHAZADA
+
+  @@map("tipo_notificacion")
+}
+
+enum TipoDispositivo {
+  ANDROID
+  IOS
+
+  @@map("tipo_dispositivo")
+}
+
 // ==========================================
 // MODELOS DEL MVP GESLAB
 // ==========================================
@@ -114,6 +131,7 @@ model Usuario {
   reservas          Reserva[]      @relation("SolicitanteReservas")
   reservasRevisadas Reserva[]      @relation("RevisorReservas")
   notificaciones    Notificacion[]
+  dispositivos      DispositivoUsuario[]
 
   @@index([correoInstitucional])
   @@index([rolId, activo])
@@ -287,18 +305,36 @@ model Reserva {
 }
 
 model Notificacion {
-  id                Int      @id @default(autoincrement())
-  usuarioId         Int      @map("usuario_id")
-  titulo            String   @db.VarChar(150)
-  mensaje           String   @db.Text
-  tipo              String   @db.VarChar(50)
-  leida             Boolean  @default(false)
-  referenciaEntidad String?  @map("referencia_entidad") @db.VarChar(50)
-  referenciaId      Int?     @map("referencia_id")
-  creadoEn          DateTime @default(now()) @map("creado_en")
+  id                Int              @id @default(autoincrement())
+  usuarioId         Int              @map("usuario_id")
+  titulo            String           @db.VarChar(150)
+  mensaje           String           @db.Text
+  tipo              TipoNotificacion
+  referenciaEntidad String?          @map("referencia_entidad") @db.VarChar(50)
+  referenciaId      Int?             @map("referencia_id")
+  leida             Boolean          @default(false)
+  leidaEn           DateTime?        @map("leida_en")
+  creadoEn          DateTime         @default(now()) @map("creado_en")
 
   usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@index([usuarioId, leida])
   @@map("notificaciones")
 }
+
+model DispositivoUsuario {
+  id              Int             @id @default(autoincrement())
+  usuarioId       Int             @map("usuario_id")
+  tokenFirebase   String          @unique @map("token_firebase") @db.VarChar(255)
+  tipoDispositivo TipoDispositivo @map("tipo_dispositivo")
+  activo          Boolean         @default(true)
+  creadoEn        DateTime        @default(now()) @map("creado_en")
+  actualizadoEn   DateTime        @updatedAt @map("actualizado_en")
+  ultimoUsoEn     DateTime        @default(now()) @map("ultimo_uso_en")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, activo])
+  @@map("dispositivos_usuarios")
+}
+

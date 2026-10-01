@@ -3,7 +3,12 @@ import * as reservasController from './reservas.controller.js';
 import { autenticar } from '../../middlewares/autenticacion.js';
 import { permitirRoles } from '../../middlewares/autorizacion.js';
 import { validarEsquema } from '../../middlewares/validarEsquema.js';
-import { crearReservaEsquema, rechazarReservaEsquema } from './reservas.schema.js';
+import {
+  crearReservaEsquema,
+  rechazarReservaEsquema,
+  crearLaboratorioEsquema,
+  crearHorarioEsquema
+} from './reservas.schema.js';
 
 const router = Router();
 
@@ -11,6 +16,21 @@ router.use(autenticar);
 
 // Catálogo de laboratorios y horarios disponibles (CU12)
 router.get('/laboratorios', reservasController.listarLaboratorios);
+
+// Creación de laboratorios y franjas horarias (CU16 - Admin/Encargado)
+router.post(
+  '/laboratorios',
+  permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
+  validarEsquema(crearLaboratorioEsquema, 'body'),
+  reservasController.crearLaboratorio
+);
+
+router.post(
+  '/laboratorios/:id/horarios',
+  permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
+  validarEsquema(crearHorarioEsquema, 'body'),
+  reservasController.crearHorario
+);
 
 // Endpoints generales de reservas
 router.post('/', validarEsquema(crearReservaEsquema, 'body'), reservasController.crear);

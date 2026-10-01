@@ -107,3 +107,14 @@ export async function listarRevisiones(req, res, next) {
     next(error);
   }
 }
+
+export async function finalizar(req, res, next) {
+  try {
+    const practicaId = parseInt(req.params.id, 10);
+    const practicaFinalizada = await practicasService.finalizarPractica(practicaId, req.body, req.usuario);
+    return responderExito(res, 200, 'Práctica finalizada correctamente', practicaFinalizada);
+  } catch (error) {
+    next(error);
+  }
+}
+

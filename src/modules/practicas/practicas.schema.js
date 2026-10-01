@@ -57,3 +57,11 @@ export const revisionDocenteEsquema = z.object({
     })
   ).optional()
 });
+
+export const finalizarPracticaEsquema = z.object({
+  estado: z.enum(['FINALIZADA', 'CERRADA'], {
+    errorMap: () => ({ message: 'El estado debe ser FINALIZADA o CERRADA' })
+  }).optional().default('FINALIZADA'),
+  observacionesFinales: z.string().optional().nullable()
+});
+

@@ -61,3 +61,23 @@ export async function rechazar(req, res, next) {
     next(error);
   }
 }
+
+export async function crearLaboratorio(req, res, next) {
+  try {
+    const laboratorio = await reservasService.crearNuevoLaboratorio(req.body);
+    return responderExito(res, 201, 'Laboratorio registrado exitosamente', laboratorio);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function crearHorario(req, res, next) {
+  try {
+    const laboratorioId = parseInt(req.params.id, 10);
+    const horario = await reservasService.crearHorarioLaboratorio(laboratorioId, req.body);
+    return responderExito(res, 201, 'Franja horaria agregada exitosamente', horario);
+  } catch (error) {
+    next(error);
+  }
+}
+

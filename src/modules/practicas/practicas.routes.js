@@ -7,7 +7,8 @@ import {
   crearPracticaEsquema,
   actualizarPracticaEsquema,
   crearInstrumentoEsquema,
-  revisionDocenteEsquema
+  revisionDocenteEsquema,
+  finalizarPracticaEsquema
 } from './practicas.schema.js';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.put('/:id', validarEsquema(actualizarPracticaEsquema, 'body'), practicasC
 
 // Transiciones de estado de la práctica
 router.patch('/:id/enviar-revision', practicasController.enviarRevision);
+router.patch('/:id/finalizar', validarEsquema(finalizarPracticaEsquema, 'body'), practicasController.finalizar);
 
 // Gestión de Instrumentos de Evaluación (CU07 / HU04)
 router.post(
@@ -43,3 +45,4 @@ router.post(
 router.get('/:id/revisiones', practicasController.listarRevisiones);
 
 export default router;
+
