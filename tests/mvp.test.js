@@ -14,7 +14,8 @@ import {
 import {
   crearLaboratorioEsquema,
   crearHorarioEsquema,
-  consultarDisponibilidadEsquema
+  consultarDisponibilidadEsquema,
+  crearReservaEsquema
 } from '../src/modules/reservas/reservas.schema.js';
 
 describe('API GesLab', () => {
@@ -149,6 +150,23 @@ describe('API GesLab', () => {
       expect(consultarDisponibilidadEsquema.safeParse({ fecha: '15-10-2026' }).success).toBe(false);
       expect(consultarDisponibilidadEsquema.safeParse({ fecha: 'invalida' }).success).toBe(false);
     });
+
+    test('crearReservaEsquema debe validar campos obligatorios y formato de fecha', () => {
+      const reservaValida = {
+        practicaId: 1,
+        laboratorioId: 1,
+        horarioId: 1,
+        fechaReserva: '2026-10-15'
+      };
+      expect(crearReservaEsquema.safeParse(reservaValida).success).toBe(true);
+
+      const reservaSinFecha = { practicaId: 1 };
+      expect(crearReservaEsquema.safeParse(reservaSinFecha).success).toBe(false);
+
+      const reservaFechaInvalida = { practicaId: 1, fechaReserva: 'ayer' };
+      expect(crearReservaEsquema.safeParse(reservaFechaInvalida).success).toBe(false);
+    });
   });
 });
+
 

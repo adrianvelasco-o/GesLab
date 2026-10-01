@@ -4,6 +4,16 @@ import { crearYEnviarNotificacion } from '../notificaciones/notificaciones.servi
 import { AppError } from '../../errors/AppError.js';
 import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 
+const DIAS_SEMANA_MAP = [
+  null,        // 0: Domingo (sin atención)
+  'LUNES',     // 1
+  'MARTES',    // 2
+  'MIERCOLES', // 3
+  'JUEVES',    // 4
+  'VIERNES',   // 5
+  'SABADO'     // 6
+];
+
 export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioId = 1, fechaReserva, usuario }) {
   // 1. Verificar que la práctica exista
   const practica = await practicasRepository.buscarPracticaPorId(practicaId);
@@ -16,8 +26,59 @@ export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioI
     throw new AppError('Solo puedes solicitar reservas para tus propias prácticas', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 
-  // 3. Crear la reserva en estado PENDIENTE
-  return reservasRepository.crearReserva({
+  // 3. Validar regla RN07: La práctica debe encontrarse en estado APROBADA
+  if (practica.estado !== 'APROBADA') {
+    throw new AppError('La práctica debe estar en estado APROBADA para poder solicitar una reserva', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
+  }
+
+  // 4. Verificar que el laboratorio exista y esté activo
+  const laboratorio = await reservasRepository.buscarLaboratorioPorId(laboratorioId);
+  if (!laboratorio || !laboratorio.activo) {
+    throw new AppError('El laboratorio especificado no existe o no está activo', 404, CODIGOS_ERROR.LABORATORIO_INACTIVO);
+  }
+
+  // 5. Verificar que el horario exista, pertenezca al laboratorio y esté activo
+  const horario = await reservasRepository.buscarHorarioPorId(horarioId);
+  if (!horario || horario.laboratorioId !== laboratorioId || !horario.activo) {
+    throw new AppError('La franja horaria seleccionada no existe o no está habilitada para este laboratorio', 400, CODIGOS_ERROR.HORARIO_DESHABILITADO);
+  }
+
+  // 6. Verificar que la fecha de reserva corresponda al día de la semana de la franja
+  const [year, month, day] = fechaReserva.split('-').map(Number);
+  const fechaUtc = new Date(Date.UTC(year, month - 1, day));
+  if (isNaN(fechaUtc.getTime())) {
+    throw new AppError('La fecha proporcionada es inválida', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
+  const diaSemanaFecha = DIAS_SEMANA_MAP[fechaUtc.getUTCDay()];
+  if (!diaSemanaFecha || horario.diaSemana !== diaSemanaFecha) {
+    throw new AppError(
+      `La fecha seleccionada (${diaSemanaFecha || 'DOMINGO'}) no corresponde al día de atención de la franja (${horario.diaSemana})`,
+      400,
+      CODIGOS_ERROR.DATOS_INVALIDOS
+    );
+  }
+
+  // 7. Prevenir colisión / conflicto de reserva simultánea (Escenario 3 - RN08)
+  const fechaInicio = new Date(Date.UTC(year, month - 1, day));
+  const fechaFin = new Date(Date.UTC(year, month - 1, day + 1));
+  const reservasActivas = await reservasRepository.contarReservasActivasEnFranja({
+    laboratorioId,
+    horarioId,
+    fechaInicio,
+    fechaFin
+  });
+
+  if (reservasActivas >= (laboratorio.capacidad || 1)) {
+    throw new AppError(
+      'La franja horaria seleccionada ya no se encuentra disponible para esta fecha',
+      409,
+      CODIGOS_ERROR.RESERVA_NO_DISPONIBLE
+    );
+  }
+
+  // 8. Crear la reserva en estado PENDIENTE
+  const nuevaReserva = await reservasRepository.crearReserva({
     practicaId,
     laboratorioId,
     horarioId,
@@ -25,6 +86,22 @@ export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioI
     fechaReserva: new Date(fechaReserva),
     estado: 'PENDIENTE'
   });
+
+  // 9. Notificar al Encargado del laboratorio (Escenario 1)
+  reservasRepository.listarEncargadosActivos().then((encargados) => {
+    encargados.forEach((encargado) => {
+      crearYEnviarNotificacion({
+        usuarioId: encargado.id,
+        titulo: 'Nueva Solicitud de Reserva',
+        mensaje: `El estudiante ha solicitado una reserva de laboratorio para la práctica '${practica.titulo}'.`,
+        tipo: 'RESERVA_APROBADA',
+        referenciaEntidad: 'RESERVA',
+        referenciaId: nuevaReserva.id
+      }).catch((err) => console.error('Error al notificar encargado:', err.message));
+    });
+  }).catch((err) => console.error('Error al listar encargados:', err.message));
+
+  return nuevaReserva;
 }
 
 // Alias para compatibilidad
@@ -110,15 +187,6 @@ export async function rechazarReserva(reservaId, motivo, usuario) {
   return reservaRechazada;
 }
 
-const DIAS_SEMANA_MAP = [
-  null,        // 0: Domingo (sin atención)
-  'LUNES',     // 1
-  'MARTES',    // 2
-  'MIERCOLES', // 3
-  'JUEVES',    // 4
-  'VIERNES',   // 5
-  'SABADO'     // 6
-];
 
 export async function listarLaboratoriosDisponibles(fecha = null) {
   const laboratorios = await reservasRepository.listarLaboratoriosConHorarios();

@@ -125,4 +125,42 @@ export async function listarReservasPorFecha(fecha) {
   });
 }
 
+export async function buscarHorarioPorId(id) {
+  return prisma.horario.findUnique({
+    where: { id }
+  });
+}
+
+export async function contarReservasActivasEnFranja({ laboratorioId, horarioId, fechaInicio, fechaFin }) {
+  return prisma.reserva.count({
+    where: {
+      laboratorioId,
+      horarioId,
+      fechaReserva: {
+        gte: fechaInicio,
+        lt: fechaFin
+      },
+      estado: {
+        in: ['PENDIENTE', 'APROBADA']
+      }
+    }
+  });
+}
+
+export async function listarEncargadosActivos() {
+  return prisma.usuario.findMany({
+    where: {
+      rol: { nombre: 'ENCARGADO' },
+      activo: true
+    },
+    select: {
+      id: true,
+      nombres: true,
+      apellidos: true,
+      correoInstitucional: true
+    }
+  });
+}
+
+
 
