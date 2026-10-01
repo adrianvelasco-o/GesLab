@@ -8,7 +8,8 @@ import {
   rechazarReservaEsquema,
   crearLaboratorioEsquema,
   crearHorarioEsquema,
-  consultarDisponibilidadEsquema
+  consultarDisponibilidadEsquema,
+  cambiarEstadoHorarioEsquema
 } from './reservas.schema.js';
 
 const router = Router();
@@ -22,7 +23,7 @@ router.get(
   reservasController.listarLaboratorios
 );
 
-// Creación de laboratorios y franjas horarias (CU16 - Admin/Encargado)
+// Gestión de laboratorios y franjas horarias (CU16 / HU16 - Admin/Encargado)
 router.post(
   '/laboratorios',
   permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
@@ -35,6 +36,13 @@ router.post(
   permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
   validarEsquema(crearHorarioEsquema, 'body'),
   reservasController.crearHorario
+);
+
+router.patch(
+  '/horarios/:id/estado',
+  permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
+  validarEsquema(cambiarEstadoHorarioEsquema, 'body'),
+  reservasController.cambiarEstadoHorario
 );
 
 // Endpoints generales de reservas

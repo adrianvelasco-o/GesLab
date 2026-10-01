@@ -271,3 +271,13 @@ export async function crearHorarioLaboratorio(laboratorioId, datos) {
   });
 }
 
+export async function cambiarEstadoHorario(horarioId, activo) {
+  const horario = await reservasRepository.buscarHorarioPorId(horarioId);
+  if (!horario) {
+    throw new AppError('La franja horaria especificada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
+
+  return reservasRepository.actualizarEstadoHorario(horarioId, activo);
+}
+
+

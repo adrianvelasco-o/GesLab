@@ -94,3 +94,18 @@ export async function crearHorario(req, res, next) {
   }
 }
 
+export async function cambiarEstadoHorario(req, res, next) {
+  try {
+    const horarioId = parseInt(req.params.id, 10);
+    const { activo } = req.body;
+    const horarioActualizado = await reservasService.cambiarEstadoHorario(horarioId, activo);
+    const mensaje = activo
+      ? 'Franja horaria habilitada exitosamente'
+      : 'Franja horaria deshabilitada exitosamente';
+    return responderExito(res, 200, mensaje, horarioActualizado);
+  } catch (error) {
+    next(error);
+  }
+}
+
+

@@ -162,5 +162,16 @@ export async function listarEncargadosActivos() {
   });
 }
 
+export async function actualizarEstadoHorario(id, activo) {
+  return prisma.horario.update({
+    where: { id },
+    data: { activo },
+    include: {
+      laboratorio: true
+    }
+  });
+}
+
+
 
 

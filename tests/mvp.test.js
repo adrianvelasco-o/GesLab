@@ -15,7 +15,8 @@ import {
   crearLaboratorioEsquema,
   crearHorarioEsquema,
   consultarDisponibilidadEsquema,
-  crearReservaEsquema
+  crearReservaEsquema,
+  cambiarEstadoHorarioEsquema
 } from '../src/modules/reservas/reservas.schema.js';
 
 describe('API GesLab', () => {
@@ -166,7 +167,15 @@ describe('API GesLab', () => {
       const reservaFechaInvalida = { practicaId: 1, fechaReserva: 'ayer' };
       expect(crearReservaEsquema.safeParse(reservaFechaInvalida).success).toBe(false);
     });
+
+    test('cambiarEstadoHorarioEsquema debe requerir booleano en activo', () => {
+      expect(cambiarEstadoHorarioEsquema.safeParse({ activo: false }).success).toBe(true);
+      expect(cambiarEstadoHorarioEsquema.safeParse({ activo: true }).success).toBe(true);
+      expect(cambiarEstadoHorarioEsquema.safeParse({ activo: 'false' }).success).toBe(false);
+      expect(cambiarEstadoHorarioEsquema.safeParse({}).success).toBe(false);
+    });
   });
 });
+
 
 

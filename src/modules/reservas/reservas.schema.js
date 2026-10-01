@@ -61,3 +61,8 @@ export const consultarDisponibilidadEsquema = z.object({
     .optional()
 });
 
+export const cambiarEstadoHorarioEsquema = z.object({
+  activo: z.boolean({ required_error: 'El campo activo es obligatorio y debe ser un valor booleano' })
+});
+
+
