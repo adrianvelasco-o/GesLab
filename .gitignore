@@ -13,11 +13,16 @@ logs/
 npm-debug.log*
 
 # Archivos subidos / multimedia local
-uploads/
+uploads/*
+!uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
 temp/
 
-# Cobertura de pruebas
+# Cobertura de pruebas y compilación
 coverage/
+dist/
+.vite/
 
 # IDE y Sistema Operativo
 .vscode/
@@ -31,7 +36,8 @@ bd.txt
 peticiones.txt
 prompt.txt
 HISTORIAS_DE_USUARIO.md
-matriz_historias_usuario_geslab.md
+matriz_historias_usuario_Ux.md
+
 *.xlsx
 
 .gradle/
