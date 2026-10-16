@@ -7,9 +7,28 @@ import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 import { eliminarArchivoDisco } from '../../middlewares/subidaArchivos.js';
 import { CONFIG } from '../../config/ambiente.js';
 
+/** Comprueba la firma real del archivo (%PDF-), sin fiarse del mimetype ni de la extensión que envía el cliente. */
+function esPdfReal(rutaArchivo) {
+  let descriptor;
+  try {
+    descriptor = fs.openSync(rutaArchivo, 'r');
+    const buffer = Buffer.alloc(5);
+    fs.readSync(descriptor, buffer, 0, 5, 0);
+    return buffer.toString('latin1') === '%PDF-';
+  } catch {
+    return false;
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+  }
+}
+
 export async function registrarDocumentoPdf({ practicaId, tipo, archivo, usuario }) {
   if (!archivo) {
     throw new AppError('Debe adjuntar un archivo en formato PDF', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
+  if (!esPdfReal(archivo.path)) {
+    throw new AppError('El archivo adjunto no es un PDF válido', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
   }
 
   const idNum = parseInt(practicaId, 10);
@@ -104,7 +123,7 @@ export async function obtenerArchivoParaDescarga(documentoId, usuario) {
   const dirSubidas = path.resolve(CONFIG.DIRECTORIO_SUBIDAS);
   const rutaAbsoluta = path.resolve(documento.ruta);
 
-  if (!rutaAbsoluta.startsWith(dirSubidas)) {
+  if (!rutaAbsoluta.startsWith(dirSubidas + path.sep)) {
     throw new AppError('Acceso a ruta de archivo no permitida', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 

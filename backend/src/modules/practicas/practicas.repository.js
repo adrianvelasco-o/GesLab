@@ -218,3 +218,10 @@ export async function eliminarParticipante(id) {
     where: { id }
   });
 }
+
+export async function buscarDocenteActivoPorId(id) {
+  return prisma.usuario.findFirst({
+    where: { id, activo: true, rol: { nombre: 'DOCENTE' } },
+    select: { id: true }
+  });
+}

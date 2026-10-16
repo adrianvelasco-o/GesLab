@@ -1,5 +1,6 @@
 import * as reservasService from './reservas.service.js';
-import { responderExito } from '../../utils/respuestaApi.js';
+import { responderExito, responderError } from '../../utils/respuestaApi.js';
+import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 
 export async function crear(req, res, next) {
   try {
@@ -70,6 +71,19 @@ export async function rechazar(req, res, next) {
     const { motivo } = req.body;
     const reservaRechazada = await reservasService.rechazarReserva(reservaId, motivo, req.usuario);
     return responderExito(res, 200, 'Reserva rechazada correctamente', reservaRechazada);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function notificarFaltante(req, res, next) {
+  try {
+    const reservaId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(reservaId) || reservaId <= 0) {
+      return responderError(res, 400, 'El id de la reserva debe ser un número entero positivo', CODIGOS_ERROR.DATOS_INVALIDOS);
+    }
+    const resultado = await reservasService.notificarDocumentacionFaltante(reservaId);
+    return responderExito(res, 200, 'Se notificó al solicitante la documentación pendiente', resultado);
   } catch (error) {
     next(error);
   }

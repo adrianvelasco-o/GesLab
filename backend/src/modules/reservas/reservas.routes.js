@@ -64,4 +64,11 @@ router.patch(
   reservasController.rechazar
 );
 
+// Avisar al solicitante que falta documentación obligatoria
+router.post(
+  '/:id/notificar-faltante',
+  permitirRoles('ENCARGADO', 'ADMINISTRADOR'),
+  reservasController.notificarFaltante
+);
+
 export default router;

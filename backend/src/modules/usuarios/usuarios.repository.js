@@ -104,3 +104,11 @@ export async function actualizarEstadoUsuario(usuarioId, activo) {
     }
   });
 }
+
+export async function listarDocentesActivos() {
+  return prisma.usuario.findMany({
+    where: { activo: true, rol: { nombre: 'DOCENTE' } },
+    select: { id: true, nombres: true, apellidos: true },
+    orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }]
+  });
+}

@@ -3,7 +3,20 @@ import { crearYEnviarNotificacion } from '../notificaciones/notificaciones.servi
 import { AppError } from '../../errors/AppError.js';
 import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 
+async function validarDocenteAsignable(docenteId) {
+  if (docenteId === undefined || docenteId === null) return;
+  const docente = await practicasRepository.buscarDocenteActivoPorId(docenteId);
+  if (!docente) {
+    throw new AppError(
+      'El docente tutor indicado no existe, está inactivo o no tiene rol DOCENTE',
+      400,
+      CODIGOS_ERROR.DATOS_INVALIDOS
+    );
+  }
+}
+
 export async function crearNuevaPractica(estudianteId, datos) {
+  await validarDocenteAsignable(datos.docenteId);
   return practicasRepository.crearPractica({
     titulo: datos.titulo,
     descripcion: datos.descripcion,
@@ -35,6 +48,8 @@ export async function actualizarPractica(practicaId, datos, usuario) {
   if (!['BORRADOR', 'RECHAZADA'].includes(practica.estado) && usuario.rolNombre !== 'ADMINISTRADOR') {
     throw new AppError('Solo se pueden modificar prácticas en estado BORRADOR o RECHAZADA', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
+
+  await validarDocenteAsignable(datos.docenteId);
 
   return practicasRepository.actualizarPractica(practicaId, datos);
 }
@@ -194,6 +209,10 @@ export async function registrarRevisionDocente(practicaId, datos, usuario) {
     throw new AppError('Solo se pueden evaluar prácticas que se encuentren en estado EN_REVISION', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
+  if (usuario.rolNombre === 'DOCENTE' && practica.docenteId !== usuario.id) {
+    throw new AppError('Solo el docente tutor asignado a la práctica puede revisarla', 403, CODIGOS_ERROR.DOCENTE_NO_ASIGNADO);
+  }
+
   const revision = await practicasRepository.crearRevisionConObservaciones({
     practicaId,
     docenteId: usuario.id,
@@ -272,7 +291,7 @@ export async function finalizarPractica(practicaId, datos, usuario) {
       usuarioId: practica.estudianteId,
       titulo: 'Práctica Cerrada Formalmente',
       mensaje: `Tu práctica '${practica.titulo}' ha sido formalmente evaluada y cerrada por el docente orientador.`,
-      tipo: 'PRACTICA_APROBADA',
+      tipo: 'PRACTICA_CERRADA',
       referenciaEntidad: 'PRACTICA',
       referenciaId: practicaId
     }).catch((err) => console.error('Error al notificar cierre de práctica:', err.message));

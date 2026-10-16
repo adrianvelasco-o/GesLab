@@ -44,21 +44,39 @@ async function principal() {
   const rolEstudiante = await prisma.rol.findUnique({ where: { nombre: 'ESTUDIANTE' } });
   const rolEncargado = await prisma.rol.findUnique({ where: { nombre: 'ENCARGADO' } });
 
-  // 2. Crear Usuarios Base de Desarrollo con contraseñas seguras hasheadas
-  const contrasenaComun = await bcrypt.hash('Ux2026*', 10);
-  const adminPass = process.env.ADMIN_CONTRASENA
-    ? await bcrypt.hash(process.env.ADMIN_CONTRASENA, 10)
-    : contrasenaComun;
+  // 2. Usuarios base. Los usuarios demo (contraseña común) NUNCA se crean en producción
+  //    salvo que se active SEMBRAR_USUARIOS_DEMO=true de forma explícita.
+  const esProduccion = process.env.NODE_ENV === 'production';
+  const sembrarDemo = process.env.SEMBRAR_USUARIOS_DEMO === 'true' || (!esProduccion && process.env.SEMBRAR_USUARIOS_DEMO !== 'false');
 
-  const usuariosBase = [
-    {
+  const usuariosBase = [];
+
+  if (process.env.ADMIN_CONTRASENA) {
+    usuariosBase.push({
       rolId: rolAdmin.id,
       nombres: process.env.ADMIN_NOMBRE || 'Administrador',
       apellidos: process.env.ADMIN_APELLIDO || 'Ux',
       correoInstitucional: process.env.ADMIN_CORREO || 'admin@unicolmayor.edu.co',
-      contrasenaHash: adminPass,
+      contrasenaHash: await bcrypt.hash(process.env.ADMIN_CONTRASENA, 10),
       activo: true
-    },
+    });
+  } else if (esProduccion) {
+    throw new Error('ADMIN_CONTRASENA es obligatoria en producción para crear el administrador inicial');
+  }
+
+  if (sembrarDemo) {
+    const contrasenaComun = await bcrypt.hash('Ux2026*', 10);
+    if (!process.env.ADMIN_CONTRASENA) {
+      usuariosBase.push({
+        rolId: rolAdmin.id,
+        nombres: 'Administrador',
+        apellidos: 'Ux',
+        correoInstitucional: process.env.ADMIN_CORREO || 'admin@unicolmayor.edu.co',
+        contrasenaHash: contrasenaComun,
+        activo: true
+      });
+    }
+    usuariosBase.push(
     {
       rolId: rolDocente.id,
       nombres: 'Víctor Hugo',
@@ -83,7 +101,8 @@ async function principal() {
       contrasenaHash: contrasenaComun,
       activo: true
     }
-  ];
+    );
+  }
 
   for (const usuario of usuariosBase) {
     await prisma.usuario.upsert({
@@ -97,7 +116,7 @@ async function principal() {
       create: usuario
     });
   }
-  console.log('Usuarios de desarrollo registrados.');
+  console.log(`Usuarios registrados: ${usuariosBase.length}${sembrarDemo ? ' (incluye usuarios demo)' : ''}.`);
 
   // 3. Crear Laboratorios UX
   const lab1 = await prisma.laboratorio.upsert({

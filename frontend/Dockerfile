@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copiar manifiesto de dependencias para aprovechar caché
 COPY package*.json ./
-RUN npm ci
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copiar el código fuente del frontend
 COPY . .

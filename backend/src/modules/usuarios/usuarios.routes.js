@@ -4,6 +4,7 @@ import { permitirRoles } from '../../middlewares/autorizacion.js';
 import { validarEsquema } from '../../middlewares/validarEsquema.js';
 import * as authService from '../auth/auth.service.js';
 import * as usuariosController from './usuarios.controller.js';
+import * as usuariosRepository from './usuarios.repository.js';
 import { cambiarRolEsquema, cambiarEstadoEsquema } from './usuarios.schema.js';
 import { responderExito } from '../../utils/respuestaApi.js';
 
@@ -16,6 +17,16 @@ router.get('/me', async (req, res, next) => {
   try {
     const usuario = await authService.obtenerPerfil(req.usuario.id);
     return responderExito(res, 200, 'Datos del usuario autenticado obtenidos correctamente', usuario);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/usuarios/docentes - Docentes activos (solo id y nombre) para asignar tutor a una práctica
+router.get('/docentes', async (_req, res, next) => {
+  try {
+    const docentes = await usuariosRepository.listarDocentesActivos();
+    return responderExito(res, 200, 'Docentes obtenidos correctamente', docentes);
   } catch (error) {
     next(error);
   }

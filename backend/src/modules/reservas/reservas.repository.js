@@ -2,17 +2,27 @@ import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../errors/AppError.js';
 import { CODIGOS_ERROR } from '../../constants/codigosError.js';
 
+// Relaciones comunes de una reserva. Incluye los documentos de la práctica (solo metadatos)
+// para poder verificar la documentación obligatoria sin consultas adicionales.
+const INCLUDE_RESERVA = {
+  practica: {
+    include: {
+      documentos: {
+        select: { id: true, tipo: true, nombreOriginal: true, tamanoBytes: true, creadoEn: true }
+      }
+    }
+  },
+  laboratorio: true,
+  horario: true,
+  solicitante: {
+    select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
+  }
+};
+
 export async function crearReserva(datosReserva) {
   return prisma.reserva.create({
     data: datosReserva,
-    include: {
-      practica: true,
-      laboratorio: true,
-      horario: true,
-      solicitante: {
-        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-      }
-    }
+    include: INCLUDE_RESERVA
   });
 }
 
@@ -64,14 +74,7 @@ export async function crearReservaConControlConcurrencia({
         fechaReserva,
         estado
       },
-      include: {
-        practica: true,
-        laboratorio: true,
-        horario: true,
-        solicitante: {
-          select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-        }
-      }
+      include: INCLUDE_RESERVA
     });
   });
 }
@@ -79,28 +82,14 @@ export async function crearReservaConControlConcurrencia({
 export async function listarReservasPorUsuario(solicitanteId) {
   return prisma.reserva.findMany({
     where: { solicitanteId },
-    include: {
-      practica: true,
-      laboratorio: true,
-      horario: true,
-      solicitante: {
-        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-      }
-    },
+    include: INCLUDE_RESERVA,
     orderBy: { creadoEn: 'desc' }
   });
 }
 
 export async function listarTodasLasReservas() {
   return prisma.reserva.findMany({
-    include: {
-      practica: true,
-      laboratorio: true,
-      horario: true,
-      solicitante: {
-        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-      }
-    },
+    include: INCLUDE_RESERVA,
     orderBy: { creadoEn: 'desc' }
   });
 }
@@ -108,14 +97,7 @@ export async function listarTodasLasReservas() {
 export async function buscarReservaPorId(id) {
   return prisma.reserva.findUnique({
     where: { id },
-    include: {
-      practica: true,
-      laboratorio: true,
-      horario: true,
-      solicitante: {
-        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-      }
-    }
+    include: INCLUDE_RESERVA
   });
 }
 
@@ -127,14 +109,7 @@ export async function actualizarEstadoReserva(id, { estado, revisorId, motivoRec
       revisorId,
       motivoRechazoCancelacion
     },
-    include: {
-      practica: true,
-      laboratorio: true,
-      horario: true,
-      solicitante: {
-        select: { id: true, nombres: true, apellidos: true, correoInstitucional: true }
-      }
-    }
+    include: INCLUDE_RESERVA
   });
 }
 
@@ -234,6 +209,25 @@ export async function actualizarEstadoHorario(id, activo) {
   });
 }
 
+/**
+ * Transición atómica de una reserva PENDIENTE a APROBADA/RECHAZADA.
+ * El UPDATE condicionado (WHERE estado = 'PENDIENTE') evita que dos revisores procesen la misma solicitud.
+ */
+export async function transicionarReservaPendiente(id, { estado, revisorId, motivoRechazoCancelacion }) {
+  return prisma.$transaction(async (tx) => {
+    const { count } = await tx.reserva.updateMany({
+      where: { id, estado: 'PENDIENTE' },
+      data: { estado, revisorId, motivoRechazoCancelacion }
+    });
 
+    if (count === 0) {
+      throw new AppError(
+        'La reserva ya fue procesada o no se encuentra en estado PENDIENTE',
+        409,
+        CODIGOS_ERROR.RESERVA_YA_PROCESADA
+      );
+    }
 
-
+    return tx.reserva.findUnique({ where: { id }, include: INCLUDE_RESERVA });
+  });
+}

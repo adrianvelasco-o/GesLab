@@ -3,6 +3,8 @@ import * as practicasRepository from '../practicas/practicas.repository.js';
 import { crearYEnviarNotificacion } from '../notificaciones/notificaciones.service.js';
 import { AppError } from '../../errors/AppError.js';
 import { CODIGOS_ERROR } from '../../constants/codigosError.js';
+import { fechaHoyColombia, esFechaCalendarioValida, horaATiempoUtc } from '../../utils/fechas.js';
+import { evaluarDocumentacion, describirFaltantes } from '../../utils/documentacionReserva.js';
 
 const DIAS_SEMANA_MAP = [
   null,        // 0: Domingo (sin atención)
@@ -13,6 +15,10 @@ const DIAS_SEMANA_MAP = [
   'VIERNES',   // 5
   'SABADO'     // 6
 ];
+
+function conDocumentacion(reserva) {
+  return { ...reserva, documentacion: evaluarDocumentacion(reserva.practica?.documentos) };
+}
 
 export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioId = 1, fechaReserva, usuario }) {
   // 1. Verificar que la práctica exista
@@ -31,6 +37,16 @@ export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioI
     throw new AppError('La práctica debe estar en estado APROBADA para poder solicitar una reserva', 400, CODIGOS_ERROR.TRANSICION_ESTADO_INVALIDA);
   }
 
+  // 3.1 Documentación obligatoria: consentimiento informado y protocolo de prueba
+  const documentacion = evaluarDocumentacion(practica.documentos);
+  if (!documentacion.completa) {
+    throw new AppError(
+      `Debe adjuntar la documentación obligatoria antes de solicitar la reserva. Falta: ${describirFaltantes(documentacion.faltantes)}`,
+      400,
+      CODIGOS_ERROR.DOCUMENTACION_INCOMPLETA
+    );
+  }
+
   // 4. Verificar que el laboratorio exista y esté activo
   const laboratorio = await reservasRepository.buscarLaboratorioPorId(laboratorioId);
   if (!laboratorio || !laboratorio.activo) {
@@ -44,11 +60,16 @@ export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioI
   }
 
   // 6. Verificar que la fecha de reserva corresponda al día de la semana de la franja
+  if (!esFechaCalendarioValida(fechaReserva)) {
+    throw new AppError('La fecha proporcionada no existe en el calendario', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
+  if (fechaReserva < fechaHoyColombia()) {
+    throw new AppError('No se pueden solicitar reservas para fechas pasadas', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
   const [year, month, day] = fechaReserva.split('-').map(Number);
   const fechaUtc = new Date(Date.UTC(year, month - 1, day));
-  if (isNaN(fechaUtc.getTime())) {
-    throw new AppError('La fecha proporcionada es inválida', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
-  }
 
   const diaSemanaFecha = DIAS_SEMANA_MAP[fechaUtc.getUTCDay()];
   if (!diaSemanaFecha || horario.diaSemana !== diaSemanaFecha) {
@@ -83,7 +104,7 @@ export async function solicitarReserva({ practicaId, laboratorioId = 1, horarioI
         usuarioId: encargado.id,
         titulo: 'Nueva Solicitud de Reserva',
         mensaje: `El estudiante ha solicitado una reserva de laboratorio para la práctica '${practica.titulo}'.`,
-        tipo: 'RESERVA_APROBADA',
+        tipo: 'RESERVA_SOLICITADA',
         referenciaEntidad: 'RESERVA',
         referenciaId: nuevaReserva.id
       }).catch((err) => console.error('Error al notificar encargado:', err.message));
@@ -98,10 +119,11 @@ export const solicitarNuevaReserva = solicitarReserva;
 
 export async function obtenerReservasUsuario(usuario) {
   // Administradores y encargados pueden consultar todas las solicitudes
-  if (['ADMINISTRADOR', 'ENCARGADO'].includes(usuario.rolNombre)) {
-    return reservasRepository.listarTodasLasReservas();
-  }
-  return reservasRepository.listarReservasPorUsuario(usuario.id);
+  const reservas = ['ADMINISTRADOR', 'ENCARGADO'].includes(usuario.rolNombre)
+    ? await reservasRepository.listarTodasLasReservas()
+    : await reservasRepository.listarReservasPorUsuario(usuario.id);
+
+  return reservas.map(conDocumentacion);
 }
 
 export async function obtenerDetalleReserva(reservaId, usuario) {
@@ -118,7 +140,7 @@ export async function obtenerDetalleReserva(reservaId, usuario) {
     throw new AppError('No tienes permiso para consultar esta reserva', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 
-  return reserva;
+  return conDocumentacion(reserva);
 }
 
 export async function aprobarReserva(reservaId, usuario) {
@@ -132,7 +154,24 @@ export async function aprobarReserva(reservaId, usuario) {
     throw new AppError('Un estudiante no puede aprobar su propia solicitud de reserva', 403, CODIGOS_ERROR.ACCESO_DENEGADO);
   }
 
-  const reservaAprobada = await reservasRepository.actualizarEstadoReserva(reservaId, {
+  if (reserva.estado !== 'PENDIENTE') {
+    throw new AppError(
+      `Solo se pueden aprobar reservas en estado PENDIENTE (estado actual: ${reserva.estado})`,
+      409,
+      CODIGOS_ERROR.RESERVA_YA_PROCESADA
+    );
+  }
+
+  const documentacion = evaluarDocumentacion(reserva.practica?.documentos);
+  if (!documentacion.completa) {
+    throw new AppError(
+      `No se puede aprobar la reserva: falta documentación obligatoria (${describirFaltantes(documentacion.faltantes)})`,
+      400,
+      CODIGOS_ERROR.DOCUMENTACION_INCOMPLETA
+    );
+  }
+
+  const reservaAprobada = await reservasRepository.transicionarReservaPendiente(reservaId, {
     estado: 'APROBADA',
     revisorId: usuario.id,
     motivoRechazoCancelacion: null
@@ -157,7 +196,15 @@ export async function rechazarReserva(reservaId, motivo, usuario) {
     throw new AppError('La reserva a rechazar no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
   }
 
-  const reservaRechazada = await reservasRepository.actualizarEstadoReserva(reservaId, {
+  if (reserva.estado !== 'PENDIENTE') {
+    throw new AppError(
+      `Solo se pueden rechazar reservas en estado PENDIENTE (estado actual: ${reserva.estado})`,
+      409,
+      CODIGOS_ERROR.RESERVA_YA_PROCESADA
+    );
+  }
+
+  const reservaRechazada = await reservasRepository.transicionarReservaPendiente(reservaId, {
     estado: 'RECHAZADA',
     revisorId: usuario.id,
     motivoRechazoCancelacion: motivo
@@ -210,12 +257,16 @@ export async function listarLaboratoriosDisponibles(fecha = null) {
       const reservasEnFranja = reservasOcupadas.filter(
         (r) => r.laboratorioId === lab.id && r.horarioId === horario.id
       );
-      const estaOcupado = reservasEnFranja.length >= (lab.capacidad || 1);
+      const cuposTotales = lab.capacidad || 1;
+      const cuposLibres = Math.max(cuposTotales - reservasEnFranja.length, 0);
+      const estaOcupado = cuposLibres === 0;
 
       return {
         ...horario,
         estado: estaOcupado ? 'OCUPADO' : 'DISPONIBLE',
-        disponible: !estaOcupado
+        disponible: !estaOcupado,
+        cuposTotales,
+        cuposLibres
       };
     });
 
@@ -241,12 +292,9 @@ export async function crearHorarioLaboratorio(laboratorioId, datos) {
     throw new AppError('El laboratorio especificado no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
   }
 
-  // Parsear la cadena HH:MM a un objeto Date (tipo TIME en Postgres Prisma)
-  const [hIni, mIni] = datos.horaInicio.split(':').map(Number);
-  const [hFin, mFin] = datos.horaFin.split(':').map(Number);
-
-  const horaInicioDate = new Date(1970, 0, 1, hIni, mIni, 0);
-  const horaFinDate = new Date(1970, 0, 1, hFin, mFin, 0);
+  // Parsear la cadena HH:MM a un Date UTC (tipo TIME en Postgres vía Prisma), sin depender de la zona del servidor
+  const horaInicioDate = horaATiempoUtc(datos.horaInicio);
+  const horaFinDate = horaATiempoUtc(datos.horaFin);
 
   if (horaInicioDate >= horaFinDate) {
     throw new AppError('La hora de inicio debe ser anterior a la hora de fin', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
@@ -269,4 +317,25 @@ export async function cambiarEstadoHorario(horarioId, activo) {
   return reservasRepository.actualizarEstadoHorario(horarioId, activo);
 }
 
+export async function notificarDocumentacionFaltante(reservaId) {
+  const reserva = await reservasRepository.buscarReservaPorId(reservaId);
+  if (!reserva) {
+    throw new AppError('La reserva especificada no existe', 404, CODIGOS_ERROR.RECURSO_NO_ENCONTRADO);
+  }
 
+  const documentacion = evaluarDocumentacion(reserva.practica?.documentos);
+  if (documentacion.completa) {
+    throw new AppError('La documentación obligatoria de esta reserva ya está completa', 400, CODIGOS_ERROR.DATOS_INVALIDOS);
+  }
+
+  await crearYEnviarNotificacion({
+    usuarioId: reserva.solicitanteId,
+    titulo: 'Documentación pendiente para tu reserva',
+    mensaje: `Para tramitar tu reserva de laboratorio debes adjuntar: ${describirFaltantes(documentacion.faltantes)}.`,
+    tipo: 'RESERVA_DOCUMENTACION_FALTANTE',
+    referenciaEntidad: 'RESERVA',
+    referenciaId: reservaId
+  });
+
+  return { reservaId, faltantes: documentacion.faltantes };
+}

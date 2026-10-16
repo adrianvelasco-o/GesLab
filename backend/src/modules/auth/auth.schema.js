@@ -25,5 +25,5 @@ export const registroEsquema = z.object({
     .trim(),
   contrasena: z
     .string({ required_error: 'La contraseña es obligatoria' })
-    .min(6, 'La contraseña debe tener al menos 6 caracteres')
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
 });

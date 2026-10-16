@@ -18,3 +18,21 @@ export const limitadorLogin = rateLimit({
     }
   }
 });
+
+/**
+ * Limita la creación de cuentas por IP (evita registro masivo automatizado).
+ */
+export const limitadorRegistro = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: process.env.NODE_ENV === 'test' ? 100 : 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  statusCode: 429,
+  message: {
+    exito: false,
+    mensaje: 'Demasiados registros desde esta red. Intente nuevamente más tarde.',
+    error: {
+      codigo: CODIGOS_ERROR.ACCESO_DENEGADO
+    }
+  }
+});

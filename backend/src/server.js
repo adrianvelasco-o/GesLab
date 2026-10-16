@@ -10,8 +10,9 @@ async function iniciarServidor() {
     await prisma.$connect();
     console.log('Conexión exitosa a la base de datos PostgreSQL mediante Prisma.');
   } catch (error) {
-    console.warn('ADVERTENCIA: No se pudo conectar al servidor PostgreSQL en localhost:5432.');
-    console.warn('   Por favor asegúrate de iniciar el servicio de PostgreSQL o verificar DATABASE_URL en tu archivo .env.');
+    console.error('ERROR: No se pudo conectar a PostgreSQL. Verifica que el servicio esté activo y revisa DATABASE_URL.');
+    console.error(error.message);
+    process.exit(1);
   }
 
   // Iniciar servidor Express escuchando en todas las interfaces de red para Docker

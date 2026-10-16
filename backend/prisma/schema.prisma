@@ -83,8 +83,11 @@ enum TipoNotificacion {
   PRACTICA_ENVIADA_REVISION
   PRACTICA_APROBADA
   PRACTICA_RECHAZADA
+  PRACTICA_CERRADA
+  RESERVA_SOLICITADA
   RESERVA_APROBADA
   RESERVA_RECHAZADA
+  RESERVA_DOCUMENTACION_FALTANTE
 
   @@map("tipo_notificacion")
 }
@@ -338,3 +341,28 @@ model DispositivoUsuario {
   @@map("dispositivos_usuarios")
 }
 
+// -------------------------------------------------------------
+// BANCO DE TAREAS (HU14) Y PRE-TEST DE PARTICIPANTES (HU15)
+// Provienen de la rama Geslab-avance-Dev-Juan-Cobo.
+// Nota: por ahora no están vinculados a una práctica ni a un autor.
+// -------------------------------------------------------------
+model Tarea {
+  id                    Int      @id @default(autoincrement())
+  titulo                String   @db.VarChar(150)
+  descripcion           String?  @db.Text
+  duracion_estimada_min Int
+  creado_en             DateTime @default(now())
+
+  @@map("tareas")
+}
+
+model Pretest {
+  id                      Int      @id @default(autoincrement())
+  nombre_participante     String   @db.VarChar(120)
+  edad                    Int
+  experiencia_tecnologica String   @db.VarChar(20)
+  observaciones           String?  @db.Text
+  creado_en               DateTime @default(now())
+
+  @@map("pretests")
+}
