@@ -5,6 +5,7 @@ on:
     branches:
       - dev-adrian-obando
       - dev
+      - DEV_BRANCH
   workflow_dispatch:
 
 jobs:
@@ -19,7 +20,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
-          port: ${{ secrets.SSH_PORT || '22' }}
+          port: ${{ secrets.SSH_PORT}}
           script: |
             cd /root/projects/electivaVDiurno/equipo-3/GesLab
             git fetch origin
