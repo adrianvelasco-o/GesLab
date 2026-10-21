@@ -1,0 +1,48 @@
+# Dependencias
+node_modules/
+package-lock.json
+
+# Entorno y Secretos
+.env
+.env.local
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Archivos subidos / multimedia local
+uploads/*
+!uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+temp/
+
+# Cobertura de pruebas y compilación
+coverage/
+dist/
+.vite/
+
+# IDE y Sistema Operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Notas, requerimientos y documentación de trabajo interno
+antes de subir un commit a la rama dev-adrian-velasco.txt
+bd.txt
+peticiones.txt
+prompt.txt
+HISTORIAS_DE_USUARIO.md
+matriz_historias_usuario_Ux.md
+
+*.xlsx
+
+.gradle/
+**/android/.gradle/
+**/android/app/build/
+build/
+
+*.hprof

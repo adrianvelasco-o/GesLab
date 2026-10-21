@@ -1,0 +1,75 @@
+services:
+  db:
+    container_name: Ux-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+      POSTGRES_DB: ${DB_NAME:-Ux_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - Ux_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-Ux_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - Ux-network
+
+  backend:
+    container_name: Ux-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PUERTO: 3001
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres123}@db:5432/${DB_NAME:-Ux_db}?schema=public
+      JWT_SECRETO: ${JWT_SECRETO:-clave_segura_jwt_Ux_2026}
+      JWT_EXPIRACION: ${JWT_EXPIRACION:-8h}
+      CORS_ORIGEN: ${CORS_ORIGEN:-http://localhost:8080,http://localhost:5173,http://localhost:3000,http://127.0.0.1:8080,http://127.0.0.1:5173,http://localhost}
+      DIRECTORIO_SUBIDAS: uploads
+      TAMANO_MAXIMO_DOCUMENTO_MB: 20
+      TAMANO_MAXIMO_EVIDENCIA_MB: 100
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador}
+      ADMIN_APELLIDO: ${ADMIN_APELLIDO:-Ux}
+      ADMIN_CORREO: ${ADMIN_CORREO:-admin@unicolmayor.edu.co}
+      ADMIN_CONTRASENA: ${ADMIN_CONTRASENA:-AdminUx2026*}
+    ports:
+      - "3001:3000"
+    volumes:
+      - Ux_uploads:/app/uploads
+    networks:
+      - Ux-network
+
+  frontend:
+    container_name: Ux-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8083:80"
+    networks:
+      - Ux-network
+
+networks:
+  Ux-network:
+    driver: bridge
+
+volumes:
+  Ux_pgdata:
+    name: Ux_pgdata
+  Ux_uploads:
+    name: Ux_uploads
