@@ -43,7 +43,7 @@ services:
       ADMIN_CORREO: ${ADMIN_CORREO:-admin@unicolmayor.edu.co}
       ADMIN_CONTRASENA: ${ADMIN_CONTRASENA:-AdminUx2026*}
     ports:
-      - "3001:3000"
+      - "3001:3001"
     volumes:
       - Ux_uploads:/app/uploads
     networks:
@@ -57,12 +57,15 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
     restart: unless-stopped
-    depends_on:
-      - backend
     ports:
       - "8083:80"
     networks:
       - Ux-network
+    environment:
+      - VITE_PROXY_TARGET=http://Ux-backend:3001
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
 
 networks:
   Ux-network:
