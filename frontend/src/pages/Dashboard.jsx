@@ -99,14 +99,6 @@ export function Dashboard() {
           </div>
 
           <div className="module-card">
-            <div className="module-icon-wrap">👥</div>
-            <div className="module-info">
-              <h3>Participantes</h3>
-              <p>Registro anónimo y control de consentimientos de usuarios de prueba.</p>
-            </div>
-          </div>
-
-          <div className="module-card">
             <div className="module-icon-wrap">🔔</div>
             <div className="module-info">
               <h3>Notificaciones</h3>
